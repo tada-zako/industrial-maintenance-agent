@@ -12,3 +12,10 @@ wheels/
 # custom ignore
 *.local*
 .env
+
+# Local runtime data and dependency cache
+.uv-cache/
+data/*.db
+services/maintenance_service/data/*.db
+services/maintenance_service/data/uploads/*
+!services/maintenance_service/data/uploads/.gitkeep
