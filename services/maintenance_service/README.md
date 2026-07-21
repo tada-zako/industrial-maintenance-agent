@@ -2,7 +2,9 @@
 
 阶段一、二的独立后端服务边界，同时承载 FastAPI HTTP 接口、FastMCP 工具入口、共享业务服务、SQLite 和 Neo4j 访问。
 
-当前仅完成启动骨架和 `/api/health`；设备模型、CRUD、知识图谱初始化及 MCP 工具按开发任务分步实现。
+当前已完成启动骨架、`/api/health`、SQLite 数据模型和 Pydantic 数据契约；Mock 数据、CRUD、知识图谱初始化及 MCP 工具按开发任务分步实现。
+
+步骤一已建立以下 SQLite 表：`devices`、`device_statuses`、`problems`、`maintenance_drafts`、`workflow_runs`、`workflow_steps`、`external_materials` 和 `audit_records`。数据库默认使用异步 SQLAlchemy + `aiosqlite`，数据文件位于服务目录的 `data/maintenance.db`。
 
 ## 本地启动
 
