@@ -285,7 +285,7 @@ class MaintenanceService:
         material = await self.materials.create(data.model_dump(mode="python"))
         return await self._commit(material)
 
-    async def delete_material(self, material_id: int) -> None:
+    async def delete_material(self, material_id: int) -> ExternalMaterial:
         """删除外部资料记录。"""
 
         material = await self.materials.get(material_id)
@@ -293,6 +293,7 @@ class MaintenanceService:
             raise EntityNotFoundError(f"外部资料不存在: {material_id}")
         await self.materials.delete(material)
         await self.session.commit()
+        return material
 
     async def get_workflow(self, run_id: int) -> WorkflowRun:
         """查询工作流和步骤。"""
@@ -309,4 +310,25 @@ class MaintenanceService:
             "device_count": await self.devices.count(),
             "problem_count": await self.problems.count(),
             "draft_count": await self.drafts.count(),
+        }
+
+    async def dashboard_summary(self) -> dict[str, int | None]:
+        """汇总演示看板需要的设备、问题、草案和最近工作流数据。"""
+
+        devices = await self.list_devices()
+        latest_run = await self.workflow.get_latest_run()
+        return {
+            "device_count": len(devices),
+            "active_device_count": sum(
+                device.status == DeviceLifecycleStatus.ACTIVE for device in devices
+            ),
+            "maintenance_device_count": sum(
+                device.status == DeviceLifecycleStatus.MAINTENANCE for device in devices
+            ),
+            "fault_device_count": sum(
+                device.status == DeviceLifecycleStatus.FAULT for device in devices
+            ),
+            "problem_count": await self.problems.count(),
+            "draft_count": await self.drafts.count(),
+            "latest_workflow_id": latest_run.id if latest_run is not None else None,
         }

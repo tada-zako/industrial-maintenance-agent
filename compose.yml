@@ -1,4 +1,57 @@
 services:
+  maintenance-service:
+    build:
+      context: .
+      dockerfile: services/maintenance_service/Dockerfile
+    container_name: production-internship-maintenance-service
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - >-
+        uv run python -m services.maintenance_service.app.db.seed &&
+        uv run uvicorn services.maintenance_service.app.main:app --host 0.0.0.0 --port 8000
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////app/services/maintenance_service/data/maintenance.db
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-local-development-only-change-me}
+      MATERIAL_UPLOAD_DIR: /app/services/maintenance_service/data/uploads
+      HERMES_MCP_URL: http://maintenance-mcp:8001/mcp
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - maintenance_data:/app/services/maintenance_service/data
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  maintenance-mcp:
+    build:
+      context: .
+      dockerfile: services/maintenance_service/Dockerfile
+    container_name: production-internship-maintenance-mcp
+    restart: unless-stopped
+    command: ["uv", "run", "python", "-m", "services.maintenance_service.app.mcp_server"]
+    environment:
+      DATABASE_URL: sqlite+aiosqlite:////app/services/maintenance_service/data/maintenance.db
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-local-development-only-change-me}
+      MATERIAL_UPLOAD_DIR: /app/services/maintenance_service/data/uploads
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8001
+      MCP_PATH: /mcp
+    ports:
+      - "127.0.0.1:8001:8001"
+    volumes:
+      - maintenance_data:/app/services/maintenance_service/data
+    depends_on:
+      maintenance-service:
+        condition: service_started
+      neo4j:
+        condition: service_healthy
+
   hermes:
     image: nousresearch/hermes-agent:latest
     container_name: production-internship-hermes
@@ -10,6 +63,8 @@ services:
       API_SERVER_HOST: 0.0.0.0
       API_SERVER_PORT: "8642"
       API_SERVER_KEY: ${HERMES_API_KEY:-local-development-only-change-me}
+      # Hermes 可使用此地址注册 Streamable HTTP MCP 服务。
+      MAINTENANCE_MCP_URL: ${HERMES_MCP_URL:-http://maintenance-mcp:8001/mcp}
     ports:
       - "127.0.0.1:8642:8642"
     volumes:
@@ -34,6 +89,8 @@ services:
       retries: 12
 
 volumes:
+  maintenance_data:
+    name: production-internship-maintenance-data
   hermes_data:
     name: production-internship-hermes-data
   neo4j_data:

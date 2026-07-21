@@ -35,6 +35,9 @@ class Settings(BaseSettings):
 
     hermes_mcp_url: str = ""
     hermes_mcp_auth_token: str = ""
+    mcp_host: str = "0.0.0.0"
+    mcp_port: int = 8001
+    mcp_path: str = "/mcp"
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://127.0.0.1:3000",

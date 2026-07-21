@@ -95,3 +95,8 @@ class WorkflowService:
         """查询工作流及其步骤。"""
 
         return await self.repository.get_run(run_id)
+
+    async def get_latest_run(self) -> WorkflowRun | None:
+        """查询最近一次工作流摘要。"""
+
+        return await self.repository.get_latest_run()

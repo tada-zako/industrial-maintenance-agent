@@ -33,3 +33,7 @@ class ExternalMaterialRead(ExternalMaterialBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class ExternalMaterialImportRead(ExternalMaterialRead):
+    """受控上传后的资料记录。"""

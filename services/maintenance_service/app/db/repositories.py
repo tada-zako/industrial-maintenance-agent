@@ -336,6 +336,12 @@ class WorkflowRepository:
         )
         return await self.session.scalar(stmt)
 
+    async def get_latest_run(self) -> WorkflowRun | None:
+        """返回最近创建的一次工作流，供总览页显示。"""
+
+        stmt = select(WorkflowRun).order_by(desc(WorkflowRun.started_at)).limit(1)
+        return await self.session.scalar(stmt)
+
     async def add_step(self, values: Mapping[str, Any]) -> WorkflowStep:
         step = WorkflowStep(**dict(values))
         self.session.add(step)

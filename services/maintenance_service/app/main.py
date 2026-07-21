@@ -6,10 +6,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api.dashboard import router as dashboard_router
 from .api.devices import router as devices_router
+from .api.drafts import router as drafts_router
 from .api.errors import register_exception_handlers
 from .api.health import router as health_router
+from .api.knowledge import router as knowledge_router
+from .api.materials import router as materials_router
 from .api.problems import router as problems_router
+from .api.workflows import router as workflows_router
 from .config import settings
 from .db.init_db import initialize_database
 from .db.session import dispose_engine
@@ -44,6 +49,11 @@ def create_app() -> FastAPI:
     application.include_router(health_router, prefix="/api")
     application.include_router(devices_router, prefix="/api")
     application.include_router(problems_router, prefix="/api")
+    application.include_router(drafts_router, prefix="/api")
+    application.include_router(materials_router, prefix="/api")
+    application.include_router(dashboard_router, prefix="/api")
+    application.include_router(workflows_router, prefix="/api")
+    application.include_router(knowledge_router, prefix="/api")
     return application
 
 

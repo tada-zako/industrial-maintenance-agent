@@ -1,5 +1,12 @@
 # maintenance-service
 
+## 运行接口
+
+- FastAPI: `http://127.0.0.1:8000`，提供设备、问题、草案、资料、工作流和看板接口。
+- FastMCP: `http://127.0.0.1:8001/mcp`，提供 8 个只读查询、草案和工作流记录工具。
+
+维修草案仅用于人工审核；服务和 MCP 工具都不会控制实际设备。Compose 会将 MCP 地址通过 `MAINTENANCE_MCP_URL` 传递给 Hermes 容器，注册时使用 Streamable HTTP 地址即可。
+
 阶段一、二的独立后端服务边界，同时承载 FastAPI HTTP 接口、FastMCP 工具入口、共享业务服务、SQLite 和 Neo4j 访问。
 
 当前已完成启动骨架、`/api/health`、SQLite 数据模型、Mock 数据初始化、共享 Repository/domain 服务以及设备与问题 FastAPI API；草案/资料 API、知识图谱初始化及 MCP 工具按开发任务分步实现。
