@@ -1,0 +1,83 @@
+[
+  {
+    "device_code": "AC-001",
+    "symptom": "温度过高",
+    "description": "连续运行后排气温度超过模拟告警阈值。",
+    "severity": "high",
+    "status": "open",
+    "detected_at": "2026-07-18T09:10:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-001",
+    "symptom": "排气压力波动",
+    "description": "负载变化时排气压力短时波动，尚未影响产线。",
+    "severity": "medium",
+    "status": "investigating",
+    "detected_at": "2026-07-12T14:20:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-002",
+    "symptom": "排气压力异常",
+    "description": "设备待机后压力恢复速度低于模拟标准。",
+    "severity": "high",
+    "status": "open",
+    "detected_at": "2026-07-19T10:30:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-003",
+    "symptom": "振动异常",
+    "description": "振动值持续高于同型号设备的模拟基线。",
+    "severity": "critical",
+    "status": "investigating",
+    "detected_at": "2026-07-17T07:40:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-003",
+    "symptom": "润滑不足",
+    "description": "油位状态显示为 low，需要停机检查润滑系统。",
+    "severity": "high",
+    "status": "open",
+    "detected_at": "2026-07-17T07:45:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-004",
+    "symptom": "排气压力偏低",
+    "description": "压力低于额定压力的模拟运行区间。",
+    "severity": "medium",
+    "status": "resolved",
+    "detected_at": "2026-06-29T16:00:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-005",
+    "symptom": "排气压力异常",
+    "description": "低负载时压力未达到设定值。",
+    "severity": "medium",
+    "status": "open",
+    "detected_at": "2026-07-16T11:15:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-005",
+    "symptom": "温度过高",
+    "description": "夏季高负荷工况下出现一次温度告警。",
+    "severity": "low",
+    "status": "resolved",
+    "detected_at": "2026-06-10T13:05:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-006",
+    "symptom": "计划停机",
+    "description": "设备处于计划检修停机状态。",
+    "severity": "low",
+    "status": "resolved",
+    "detected_at": "2026-07-01T08:00:00+00:00",
+    "source": "ai-mock"
+  }
+]

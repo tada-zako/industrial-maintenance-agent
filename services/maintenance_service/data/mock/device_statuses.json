@@ -1,0 +1,62 @@
+[
+  {
+    "device_code": "AC-001",
+    "run_state": "running",
+    "pressure": 0.79,
+    "temperature": 78.2,
+    "vibration": 2.4,
+    "oil_level": "normal",
+    "collected_at": "2026-07-20T08:00:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-002",
+    "run_state": "standby",
+    "pressure": 0.61,
+    "temperature": 69.5,
+    "vibration": 1.8,
+    "oil_level": "normal",
+    "collected_at": "2026-07-20T08:00:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-003",
+    "run_state": "fault",
+    "pressure": 0.92,
+    "temperature": 82.7,
+    "vibration": 7.3,
+    "oil_level": "low",
+    "collected_at": "2026-07-20T08:00:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-004",
+    "run_state": "running",
+    "pressure": 0.96,
+    "temperature": 71.4,
+    "vibration": 2.2,
+    "oil_level": "normal",
+    "collected_at": "2026-07-20T08:00:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-005",
+    "run_state": "running",
+    "pressure": 0.58,
+    "temperature": 67.8,
+    "vibration": 2.6,
+    "oil_level": "normal",
+    "collected_at": "2026-07-20T08:00:00+00:00",
+    "source": "ai-mock"
+  },
+  {
+    "device_code": "AC-006",
+    "run_state": "stopped",
+    "pressure": 0.0,
+    "temperature": 26.2,
+    "vibration": 0.0,
+    "oil_level": "normal",
+    "collected_at": "2026-07-20T08:00:00+00:00",
+    "source": "ai-mock"
+  }
+]

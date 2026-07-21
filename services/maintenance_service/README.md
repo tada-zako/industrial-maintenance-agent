@@ -22,6 +22,12 @@ FastMCP 入口：
 uv run python -m services.maintenance_service.app.mcp_server
 ```
 
+初始化 SQLite 表结构并导入 Mock 数据：
+
+```powershell
+uv run python -m services.maintenance_service.app.db.seed
+```
+
 ## 目录职责
 
 - `app/api`：浏览器使用的 FastAPI 路由；
