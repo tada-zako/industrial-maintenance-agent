@@ -2,7 +2,7 @@
 
 阶段一、二的独立后端服务边界，同时承载 FastAPI HTTP 接口、FastMCP 工具入口、共享业务服务、SQLite 和 Neo4j 访问。
 
-当前已完成启动骨架、`/api/health`、SQLite 数据模型和 Pydantic 数据契约；Mock 数据、CRUD、知识图谱初始化及 MCP 工具按开发任务分步实现。
+当前已完成启动骨架、`/api/health`、SQLite 数据模型、Mock 数据初始化、共享 Repository/domain 服务以及设备与问题 FastAPI API；草案/资料 API、知识图谱初始化及 MCP 工具按开发任务分步实现。
 
 步骤一已建立以下 SQLite 表：`devices`、`device_statuses`、`problems`、`maintenance_drafts`、`workflow_runs`、`workflow_steps`、`external_materials` 和 `audit_records`。数据库默认使用异步 SQLAlchemy + `aiosqlite`，数据文件位于服务目录的 `data/maintenance.db`。
 
@@ -15,6 +15,8 @@ uv run uvicorn services.maintenance_service.app.main:app --reload --port 8000
 ```
 
 健康检查：`http://127.0.0.1:8000/api/health`
+
+当前已提供设备接口 `/api/devices`、设备状态接口 `/api/devices/{device_id}/statuses` 和问题接口 `/api/problems`；删除操作采用归档，不物理删除历史记录。
 
 FastMCP 入口：
 

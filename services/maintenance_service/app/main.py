@@ -6,7 +6,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api.devices import router as devices_router
+from .api.errors import register_exception_handlers
 from .api.health import router as health_router
+from .api.problems import router as problems_router
 from .config import settings
 from .db.init_db import initialize_database
 from .db.session import dispose_engine
@@ -30,6 +33,7 @@ def create_app() -> FastAPI:
         debug=settings.debug,
         lifespan=lifespan,
     )
+    register_exception_handlers(application)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -38,6 +42,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     application.include_router(health_router, prefix="/api")
+    application.include_router(devices_router, prefix="/api")
+    application.include_router(problems_router, prefix="/api")
     return application
 
 
