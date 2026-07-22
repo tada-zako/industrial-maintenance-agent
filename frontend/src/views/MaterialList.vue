@@ -270,6 +270,8 @@ onMounted(loadMaterials)
 </template>
 
 <style scoped>
+.page-container :deep(.el-table) { border: 1px solid var(--ui-border); }
+.page-container :deep(.el-card__header) { border-bottom-color: var(--ui-border); }
 .page-description { color: var(--color-text-secondary); font-size: 13px; margin-top: 4px; }
 .filter-card { margin-bottom: 16px; }
 .filter-bar { margin-bottom: 0; }

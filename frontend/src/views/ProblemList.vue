@@ -248,3 +248,8 @@ onMounted(loadProblems)
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+:deep(.el-table) { border: 1px solid var(--ui-border); }
+:deep(.el-dialog__header), :deep(.el-dialog__footer) { border-color: var(--ui-border); }
+</style>
