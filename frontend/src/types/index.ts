@@ -122,6 +122,7 @@ export interface MaintenanceDraft {
   safety_notices: string[]
   evidence_refs: EvidenceRef[]
   generated_at: string
+  workflow_run_id?: string
   status: DraftStatus
   needs_confirmation: boolean
   risk_level: 'low' | 'medium' | 'high' | 'critical'

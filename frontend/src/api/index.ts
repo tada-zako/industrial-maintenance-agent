@@ -296,6 +296,7 @@ function toDraft(raw: BackendDraft, deviceName?: string): MaintenanceDraft {
     safety_notices: raw.safety_notices,
     evidence_refs: raw.evidence.map(toEvidence),
     generated_at: raw.created_at,
+    workflow_run_id: raw.workflow_run_id === null ? undefined : String(raw.workflow_run_id),
     status: draftStatusToUi(raw.status),
     needs_confirmation: raw.requires_human_confirmation,
     risk_level: raw.safety_notices.length > 0 ? 'high' : 'medium',
@@ -730,6 +731,17 @@ export async function checkHealth(): Promise<boolean> {
     }
     await get('/api/health')
     return true
+  } catch {
+    return false
+  }
+}
+
+/** 直接检查 Hermes API 健康端点，避免把维护服务状态误当成 Agent 状态。 */
+export async function checkHermesHealth(): Promise<boolean> {
+  const url = import.meta.env.VITE_HERMES_API_HEALTH_URL || 'http://127.0.0.1:8642/health'
+  try {
+    const response = await fetch(url)
+    return response.ok
   } catch {
     return false
   }

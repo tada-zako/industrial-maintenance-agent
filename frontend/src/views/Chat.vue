@@ -3,7 +3,7 @@
  * Hermes 入口页 -- 跳转 Hermes UI
  */
 import { ref, onMounted } from 'vue'
-import { checkHealth } from '../api'
+import { checkHealth, checkHermesHealth } from '../api'
 
 const hermesUrl = import.meta.env.VITE_HERMES_WEB_URL || 'http://127.0.0.1:9119'
 
@@ -19,7 +19,8 @@ const exampleQuestions = [
 
 async function checkAgentStatus() {
   agentStatus.value = 'checking'
-  const ok = await checkHealth()
+  const [maintenanceOk, hermesOk] = await Promise.all([checkHealth(), checkHermesHealth()])
+  const ok = maintenanceOk && hermesOk
   agentStatus.value = ok ? 'online' : 'offline'
 }
 

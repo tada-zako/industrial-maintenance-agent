@@ -41,6 +41,10 @@ const materialTypeLabel: Record<MaterialType, string> = {
   other: '其他',
 }
 
+function getMaterialTypeLabel(type: string): string {
+  return materialTypeLabel[type as MaterialType] || type
+}
+
 const filteredMaterials = computed(() => {
   const keyword = searchKeyword.value.trim().toLowerCase()
   if (!keyword) return materials.value
@@ -185,7 +189,7 @@ onMounted(loadMaterials)
           <template #default="{ row }"><span class="mono">{{ row.filename }}</span></template>
         </el-table-column>
         <el-table-column label="类型" width="120">
-          <template #default="{ row }"><el-tag size="small" type="info">{{ materialTypeLabel[row.material_type] || row.material_type }}</el-tag></template>
+          <template #default="{ row }"><el-tag size="small" type="info">{{ getMaterialTypeLabel(row.material_type) }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="source_description" label="来源说明" min-width="220" show-overflow-tooltip />
         <el-table-column label="关联设备" min-width="150">
@@ -248,7 +252,7 @@ onMounted(loadMaterials)
       <template v-if="selectedMaterial">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="文件名">{{ selectedMaterial.filename }}</el-descriptions-item>
-          <el-descriptions-item label="资料类型">{{ materialTypeLabel[selectedMaterial.material_type] || selectedMaterial.material_type }}</el-descriptions-item>
+          <el-descriptions-item label="资料类型">{{ getMaterialTypeLabel(selectedMaterial.material_type) }}</el-descriptions-item>
           <el-descriptions-item label="来源说明">{{ selectedMaterial.source_description }}</el-descriptions-item>
           <el-descriptions-item label="关联设备">{{ selectedMaterial.device_id ? (deviceNameMap.get(selectedMaterial.device_id) || `设备 #${selectedMaterial.device_id}`) : '通用资料' }}</el-descriptions-item>
           <el-descriptions-item label="关联型号">{{ selectedMaterial.device_model || '未指定' }}</el-descriptions-item>

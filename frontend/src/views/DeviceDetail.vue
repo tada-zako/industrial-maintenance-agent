@@ -21,7 +21,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const activeTab = ref('indicators')
 
-const hermesUrl = import.meta.env.VITE_HERMES_WEB_URL || 'http://127.0.0.1:8642'
+const hermesUrl = import.meta.env.VITE_HERMES_WEB_URL || 'http://127.0.0.1:9119'
 
 async function loadDetail() {
   loading.value = true
