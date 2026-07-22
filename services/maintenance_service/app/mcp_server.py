@@ -84,6 +84,22 @@ def _normalize_workflow_step(step: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _device_identity_error(
+    *, device_code: str, device_name: str | None, device_model: str | None, actual: Any
+) -> str | None:
+    """确认 Agent 传入的设备标识与实际查询记录一致。"""
+
+    identifiers = {
+        "设备编号": (device_code, actual.code),
+        "设备名称": (device_name, actual.name),
+        "设备型号": (device_model, actual.model),
+    }
+    for label, (provided, expected) in identifiers.items():
+        if provided is not None and provided.strip().casefold() != expected.casefold():
+            return f"{label}与已查询设备不一致，已停止生成草案。"
+    return None
+
+
 @mcp.tool()
 async def list_devices(
     keyword: str | None = None, include_archived: bool = False
@@ -165,7 +181,10 @@ async def get_maintenance_material(
 @mcp.tool()
 async def create_repair_draft(
     device_id: int,
+    device_code: str,
     diagnosis: str,
+    device_name: str | None = None,
+    device_model: str | None = None,
     problem_id: int | None = None,
     possible_causes: list[str] | None = None,
     inspection_steps: list[str] | None = None,
@@ -175,15 +194,51 @@ async def create_repair_draft(
     safety_notices: list[str] | None = None,
     evidence: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """保存维修方案草案；调用前必须确认设备查询结果，不得猜测 device_id。"""
+    """保存维修方案草案；设备标识与知识查询均验证成功后才允许创建。"""
 
     default_safety = ["停机、泄压并执行上锁挂牌", "由具备资质的人员复核后再维修"]
     default_inspection = ["核对设备当前状态与历史故障", "确认停机和泄压条件"]
     default_repair = ["依据确认后的故障原因执行维修", "维修后进行受控试运行并记录结果"]
     try:
-        normalized_evidence = [EvidenceItem(**item) for item in evidence or []]
         async with session_context() as session:
             service = MaintenanceService(session)
+            device = await service.get_device(device_id)
+            identity_error = _device_identity_error(
+                device_code=device_code,
+                device_name=device_name,
+                device_model=device_model,
+                actual=device,
+            )
+            if identity_error:
+                return {"ok": False, "status": "needs_input", "error": identity_error, "data": []}
+            if device.is_archived:
+                return {
+                    "ok": False,
+                    "status": "needs_input",
+                    "error": "设备已归档，无法生成维修草案。",
+                    "data": [],
+                }
+            try:
+                knowledge = await KnowledgeGraphService().search(
+                    keyword=diagnosis, device_model=device.model, device_code=device.code
+                )
+            except GraphUnavailableError:
+                return {
+                    "ok": False,
+                    "status": "needs_input",
+                    "error": "知识图谱查询失败，无法基于足够依据生成草案。",
+                    "data": [],
+                }
+            if not knowledge.matches and not knowledge.cases:
+                return {
+                    "ok": False,
+                    "status": "needs_input",
+                    "error": "未找到匹配的知识证据，请补充故障现象后重试。",
+                    "data": [],
+                }
+            normalized_evidence = [EvidenceItem(**item) for item in evidence or []]
+            if not normalized_evidence:
+                normalized_evidence = knowledge.evidence
             draft = await service.create_draft(
                 MaintenanceDraftCreate(
                     device_id=device_id,
@@ -207,7 +262,7 @@ async def create_repair_draft(
                 "warning": "该维修方案仅为草案，必须由人工确认后执行。",
             }
     except (DomainError, ValueError) as exc:
-        return _domain_error(exc)
+        return {"ok": False, "status": "needs_input", "error": str(exc), "data": []}
 
 
 @mcp.tool()

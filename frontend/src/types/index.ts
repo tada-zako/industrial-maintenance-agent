@@ -8,7 +8,7 @@ export type ProblemSeverity = 'low' | 'medium' | 'high' | 'critical'
 export type ProblemStatus = 'pending' | 'investigating' | 'repairing' | 'resolved' | 'archived'
 
 /** 维修草案状态 */
-export type DraftStatus = 'pending_review' | 'confirmed' | 'archived'
+export type DraftStatus = 'pending_review' | 'confirmed' | 'rejected' | 'archived'
 
 /** 工作流运行状态 */
 export type WorkflowStatus = 'running' | 'completed' | 'failed'
@@ -126,6 +126,45 @@ export interface MaintenanceDraft {
   status: DraftStatus
   needs_confirmation: boolean
   risk_level: 'low' | 'medium' | 'high' | 'critical'
+  review_feedback?: string
+  reviewed_at?: string
+}
+
+/** 图谱节点与关系，字段与后端 Knowledge Schema 保持一致。 */
+export interface KnowledgeNode {
+  id: string
+  type: string
+  name: string
+  source: string
+  properties: Record<string, unknown>
+}
+
+export interface KnowledgeRelationship {
+  source_id: string
+  target_id: string
+  type: string
+}
+
+export interface KnowledgeCase {
+  id: string
+  name: string
+  device_model: string
+  symptoms: string[]
+  source: string
+}
+
+export interface KnowledgeGraphResult {
+  nodes: KnowledgeNode[]
+  relationships: KnowledgeRelationship[]
+  matches: Array<{
+    symptom: string
+    causes: string[]
+    actions: string[]
+    sops: string[]
+    safety_notices: string[]
+  }>
+  cases: KnowledgeCase[]
+  evidence: EvidenceRef[]
 }
 
 /** 知识图谱证据引用 */

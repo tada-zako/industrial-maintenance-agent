@@ -55,6 +55,7 @@ async def update_draft_status(
         draft_id,
         status=payload.status,
         requires_human_confirmation=payload.requires_human_confirmation,
+        review_feedback=payload.review_feedback,
     )
 
 

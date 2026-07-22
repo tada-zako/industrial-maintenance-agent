@@ -23,6 +23,8 @@ class MaintenanceDraftBase(SchemaBase):
     evidence: list[EvidenceItem] = Field(default_factory=list)
     status: DraftStatus = DraftStatus.PENDING_CONFIRMATION
     requires_human_confirmation: bool = True
+    review_feedback: str | None = Field(default=None, max_length=1000)
+    reviewed_at: datetime | None = None
     workflow_run_id: int | None = Field(default=None, gt=0)
     source: str = Field(default="agent", min_length=1, max_length=255)
 
@@ -36,6 +38,7 @@ class MaintenanceDraftStatusUpdate(SchemaBase):
 
     status: DraftStatus
     requires_human_confirmation: bool | None = None
+    review_feedback: str | None = Field(default=None, max_length=1000)
 
 
 class MaintenanceDraftRead(MaintenanceDraftBase):

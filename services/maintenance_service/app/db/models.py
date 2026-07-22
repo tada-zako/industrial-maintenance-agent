@@ -188,6 +188,8 @@ class MaintenanceDraft(CreatedUpdatedMixin, Base):
     requires_human_confirmation: Mapped[bool] = mapped_column(
         Boolean, default=True, nullable=False
     )
+    review_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # 反向 ID 不声明外键，正式关联由 WorkflowRun.draft_id 持有，避免循环 FK。
     workflow_run_id: Mapped[int | None] = mapped_column(Integer, index=True, nullable=True)
     source: Mapped[str] = mapped_column(String(255), default="agent", nullable=False)

@@ -51,6 +51,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '运维资料' },
   },
   {
+    path: '/knowledge',
+    name: 'Knowledge',
+    component: () => import('../views/Knowledge.vue'),
+    meta: { title: '知识图谱' },
+  },
+  {
     path: '/workflows/:runId',
     name: 'WorkflowDetail',
     component: () => import('../views/WorkflowDetail.vue'),

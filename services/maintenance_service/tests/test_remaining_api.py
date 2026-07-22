@@ -34,10 +34,16 @@ async def test_draft_dashboard_material_and_workflow_apis() -> None:
 
         update_response = await client.patch(
             f"/api/drafts/{draft['id']}/status",
-            json={"status": "confirmed", "requires_human_confirmation": False},
+            json={
+                "status": "confirmed",
+                "requires_human_confirmation": False,
+                "review_feedback": "确认后安排受控试运行。",
+            },
         )
         assert update_response.status_code == 200
         assert update_response.json()["status"] == "confirmed"
+        assert update_response.json()["review_feedback"] == "确认后安排受控试运行。"
+        assert update_response.json()["reviewed_at"] is not None
 
         summary_response = await client.get("/api/dashboard/summary")
         assert summary_response.status_code == 200

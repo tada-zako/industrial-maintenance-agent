@@ -19,6 +19,7 @@ import type {
   RelatedDraft,
   WorkflowRun,
   MaterialType,
+  KnowledgeGraphResult,
 } from '../types'
 import {
   getMockDeviceDetail,
@@ -96,7 +97,11 @@ interface BackendDraft {
   workflow_run_id: number | null
   source: string
   created_at: string
+  review_feedback: string | null
+  reviewed_at: string | null
 }
+
+interface BackendKnowledgeResult extends KnowledgeGraphResult {}
 
 interface BackendWorkflowStep {
   id: number
@@ -201,7 +206,8 @@ function problemStatusToBackend(status: string | undefined): string | undefined 
 }
 
 function draftStatusToUi(status: string): MaintenanceDraft['status'] {
-  return status === 'confirmed' ? 'confirmed' : status === 'archived' ? 'archived' : 'pending_review'
+  if (status === 'confirmed' || status === 'archived' || status === 'rejected') return status
+  return 'pending_review'
 }
 
 function draftStatusToBackend(status: string): string {
@@ -300,6 +306,8 @@ function toDraft(raw: BackendDraft, deviceName?: string): MaintenanceDraft {
     status: draftStatusToUi(raw.status),
     needs_confirmation: raw.requires_human_confirmation,
     risk_level: raw.safety_notices.length > 0 ? 'high' : 'medium',
+    review_feedback: raw.review_feedback ?? undefined,
+    reviewed_at: raw.reviewed_at ?? undefined,
   }
 }
 
@@ -453,10 +461,11 @@ export async function fetchDeviceDetail(deviceId: string): Promise<DeviceDetail>
     return detail
   }
   const raw = await get<BackendDevice>(`/api/devices/${Number(deviceId)}`)
-  const [rawStatuses, problems, drafts] = await Promise.all([
+  const [rawStatuses, problems, drafts, knowledge] = await Promise.all([
     get<BackendDeviceStatus[]>(`/api/devices/${raw.id}/statuses?limit=50`),
     fetchProblems({ device_id: String(raw.id), page_size: 50 }),
     fetchDrafts({ device_id: String(raw.id), page_size: 50 }),
+    fetchKnowledge({ deviceModel: raw.model, deviceCode: raw.code }).catch(() => null),
   ])
   return {
     ...toDevice(raw, rawStatuses[0]),
@@ -469,8 +478,15 @@ export async function fetchDeviceDetail(deviceId: string): Promise<DeviceDetail>
       status: problem.status,
       description: problem.description,
     })),
-    related_components: [],
-    related_cases: [],
+    related_components: (knowledge?.nodes ?? [])
+      .filter((node) => node.type === 'Component')
+      .map((node) => ({ id: node.id, name: node.name, type: '图谱部件' })),
+    related_cases: (knowledge?.cases ?? []).map((item) => ({
+      id: item.id,
+      title: item.name,
+      symptom: item.symptoms.join('、'),
+      resolution: '查看关联知识图谱中的维修措施与安全要求',
+    })),
     related_drafts: drafts.items.map<RelatedDraft>((draft) => ({
       id: draft.id,
       fault_diagnosis: draft.fault_diagnosis,
@@ -637,17 +653,62 @@ export async function fetchDraftDetail(draftId: string): Promise<MaintenanceDraf
   return toDraft(raw, names.get(String(raw.device_id)))
 }
 
-export async function updateDraftStatus(draftId: string, status: string): Promise<MaintenanceDraft> {
+export async function updateDraftStatus(
+  draftId: string,
+  status: string,
+  reviewFeedback?: string,
+): Promise<MaintenanceDraft> {
   if (isMockEnabled()) {
     await delay(300)
     const idx = mockDrafts.findIndex((draft) => draft.id === draftId)
     if (idx === -1) throw new Error('草案不存在')
-    mockDrafts[idx] = { ...mockDrafts[idx], status: status as MaintenanceDraft['status'] }
+    mockDrafts[idx] = {
+      ...mockDrafts[idx],
+      status: status as MaintenanceDraft['status'],
+      review_feedback: reviewFeedback,
+      reviewed_at: new Date().toISOString(),
+    }
     return mockDrafts[idx]
   }
-  const raw = await patch<BackendDraft>(`/api/drafts/${Number(draftId)}/status`, { status: draftStatusToBackend(status) })
+  const raw = await patch<BackendDraft>(`/api/drafts/${Number(draftId)}/status`, {
+    status: draftStatusToBackend(status),
+    review_feedback: reviewFeedback,
+    requires_human_confirmation: status === 'confirmed' ? false : undefined,
+  })
   const names = await fetchBackendDeviceNames()
   return toDraft(raw, names.get(String(raw.device_id)))
+}
+
+// ===================== 知识图谱 =====================
+
+export async function fetchKnowledge(params: {
+  keyword?: string
+  deviceModel?: string
+  deviceCode?: string
+}): Promise<KnowledgeGraphResult> {
+  if (isMockEnabled()) {
+    await delay(250)
+    return {
+      nodes: [
+        { id: 'DeviceModel:AC-SCREW-75', type: 'DeviceModel', name: params.deviceModel || 'AC-SCREW-75', source: 'ai-mock', properties: {} },
+        { id: 'FaultSymptom:温度过高', type: 'FaultSymptom', name: '温度过高', source: 'ai-mock', properties: {} },
+        { id: 'FaultCause:冷却风扇效率下降', type: 'FaultCause', name: '冷却风扇效率下降', source: 'ai-mock', properties: {} },
+        { id: 'MaintenanceAction:检查并清洁冷却风扇', type: 'MaintenanceAction', name: '检查并清洁冷却风扇', source: 'ai-mock', properties: {} },
+      ],
+      relationships: [
+        { source_id: 'FaultSymptom:温度过高', target_id: 'FaultCause:冷却风扇效率下降', type: 'MAY_BE_CAUSED_BY' },
+        { source_id: 'FaultCause:冷却风扇效率下降', target_id: 'MaintenanceAction:检查并清洁冷却风扇', type: 'SOLVED_BY' },
+      ],
+      matches: [{ symptom: '温度过高', causes: ['冷却风扇效率下降'], actions: ['检查并清洁冷却风扇'], sops: [], safety_notices: [] }],
+      cases: [],
+      evidence: [],
+    }
+  }
+  return get<BackendKnowledgeResult>(`/api/knowledge/related${queryString({
+    keyword: params.keyword,
+    device_model: params.deviceModel,
+    device_code: params.deviceCode,
+  })}`)
 }
 
 // ===================== 工作流 =====================
