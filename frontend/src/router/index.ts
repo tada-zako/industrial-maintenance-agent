@@ -45,6 +45,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '草案详情' },
   },
   {
+    path: '/materials',
+    name: 'MaterialList',
+    component: () => import('../views/MaterialList.vue'),
+    meta: { title: '运维资料' },
+  },
+  {
     path: '/workflows/:runId',
     name: 'WorkflowDetail',
     component: () => import('../views/WorkflowDetail.vue'),

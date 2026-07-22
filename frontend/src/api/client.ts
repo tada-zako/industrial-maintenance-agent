@@ -23,6 +23,7 @@ export async function request<T>(
     throw new Error(`HTTP ${res.status}: ${body || res.statusText}`)
   }
 
+  if (res.status === 204) return undefined as T
   return res.json()
 }
 
@@ -56,6 +57,11 @@ export function post<T>(path: string, body?: unknown) {
     method: 'POST',
     body: body ? JSON.stringify(body) : undefined,
   })
+}
+
+/** 上传资料时使用 FormData，不能预先设置 application/json。 */
+export function upload<T>(path: string, body: FormData) {
+  return request<T>(path, { method: 'POST', body })
 }
 
 export function patch<T>(path: string, body?: unknown) {
