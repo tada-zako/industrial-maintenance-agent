@@ -9,6 +9,18 @@ wheels/
 # Virtual environments
 .venv
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
 # custom ignore
 *.local*
 .env
+
+# Local runtime data and dependency cache
+.uv-cache/
+.pnpm-store/
+data/*.db
+services/maintenance_service/data/*.db
+services/maintenance_service/data/uploads/*
+!services/maintenance_service/data/uploads/.gitkeep

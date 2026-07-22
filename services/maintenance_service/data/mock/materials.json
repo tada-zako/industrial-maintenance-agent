@@ -1,0 +1,66 @@
+[
+  {
+    "filename": "AC-Model-A-温度异常-SOP.md",
+    "material_type": "sop",
+    "source_description": "AI Mock：AC-Model-A 温度异常检查流程",
+    "device_model": "AC-Model-A",
+    "content": "# 温度异常检查流程\n\n1. 停机、断电并释放残余压力。\n2. 检查冷却器积尘和通风。\n3. 检查润滑油液位和油路。\n4. 复测排气温度并记录。",
+    "is_reference_allowed": true
+  },
+  {
+    "filename": "AC-Model-B-振动异常-SOP.md",
+    "material_type": "sop",
+    "source_description": "AI Mock：AC-Model-B 振动异常检查流程",
+    "device_model": "AC-Model-B",
+    "content": "# 振动异常检查流程\n\n检查联轴器、地脚螺栓、轴承和转子状态；检修前必须执行锁定挂牌。",
+    "is_reference_allowed": true
+  },
+  {
+    "filename": "AC-Model-C-压力异常-SOP.md",
+    "material_type": "sop",
+    "source_description": "AI Mock：AC-Model-C 压力异常检查流程",
+    "device_model": "AC-Model-C",
+    "content": "# 压力异常检查流程\n\n确认设定值、进气过滤器、管路泄漏和压力传感器读数。",
+    "is_reference_allowed": true
+  },
+  {
+    "filename": "case-temperature-cooler-001.md",
+    "material_type": "case",
+    "source_description": "AI Mock：冷却器积尘导致温度升高案例",
+    "device_model": "AC-Model-A",
+    "content": "案例摘要：环境粉尘增加后冷却效率下降，清洁冷却器并复测后温度恢复。",
+    "is_reference_allowed": true
+  },
+  {
+    "filename": "case-vibration-bearing-002.md",
+    "material_type": "case",
+    "source_description": "AI Mock：轴承状态异常导致振动升高案例",
+    "device_model": "AC-Model-B",
+    "content": "案例摘要：振动趋势持续上升时，检查轴承和联轴器间隙，并结合停机条件确认。",
+    "is_reference_allowed": true
+  },
+  {
+    "filename": "manual-air-compressor-safety.md",
+    "material_type": "manual",
+    "source_description": "AI Mock：空压机通用安全注意事项",
+    "device_model": null,
+    "content": "维修前必须断电、锁定挂牌、释放压力并确认设备温度适合接近。",
+    "is_reference_allowed": true
+  },
+  {
+    "filename": "external-maintenance-note-example.txt",
+    "material_type": "external_reference",
+    "source_description": "AI Mock：外部资料导入示例，仅作为参考",
+    "device_model": "AC-Model-A",
+    "content": "外部资料示例。该资料的结论需要结合设备现场状态和人工判断。",
+    "is_reference_allowed": false
+  },
+  {
+    "filename": "lubrication-inspection-checklist.csv",
+    "material_type": "other",
+    "source_description": "AI Mock：润滑系统检查清单",
+    "device_model": "AC-Model-B",
+    "content": "项目,要求\n油位,位于正常刻度\n油路,无明显泄漏\n更换周期,按人工确认的维护记录执行",
+    "is_reference_allowed": true
+  }
+]

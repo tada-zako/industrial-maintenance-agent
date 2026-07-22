@@ -1,0 +1,12 @@
+.git
+.venv
+.uv-cache
+.pnpm-store
+.pytest_cache
+pytest-cache-files-*/
+frontend/node_modules
+frontend/dist
+**/__pycache__
+*.pyc
+z.local
+assets
