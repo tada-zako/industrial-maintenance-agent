@@ -6,7 +6,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { MaintenanceDraft } from '../types'
-import { fetchDraftDetail, updateDraftStatus } from '../api'
+import { fetchDraftDetail, isMockEnabled, updateDraftStatus } from '../api'
 import SeverityTag from '../components/SeverityTag.vue'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorState from '../components/ErrorState.vue'
@@ -18,6 +18,14 @@ const draftId = computed(() => route.params.draftId as string)
 const draft = ref<MaintenanceDraft | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const workflowId = computed(() => {
+  if (!draft.value) return undefined
+  if (draft.value.workflow_run_id) return draft.value.workflow_run_id
+  // 仅保留旧 Mock 数据的演示映射；真实后端始终使用 workflow_run_id。
+  if (!isMockEnabled()) return undefined
+  return draft.value.id === 'draft-002' ? 'wf-002' : 'wf-001'
+})
 
 async function loadDetail() {
   loading.value = true
@@ -44,8 +52,7 @@ async function handleStatusChange(status: string) {
 
 // 从 draft 查找关联工作流
 function goToWorkflow() {
-  // Mock: 通过 draft_id 关联工作流
-  router.push(`/workflows/${draft.value?.id === 'draft-002' ? 'wf-002' : 'wf-001'}`)
+  if (workflowId.value) router.push(`/workflows/${workflowId.value}`)
 }
 
 onMounted(loadDetail)
@@ -192,11 +199,12 @@ onMounted(loadDetail)
         <template #header>
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-weight: 600;">关联工作流</span>
-            <el-button text type="primary" size="small" @click="goToWorkflow">查看工作流详情</el-button>
+            <el-button v-if="workflowId" text type="primary" size="small" @click="goToWorkflow">查看工作流详情</el-button>
           </div>
         </template>
         <p style="color: var(--color-text-secondary); font-size: 13px;">
-          该维修草案由 Agent 工作流自动生成，点击上方按钮可查看完整的多工具调用时间线。
+          <template v-if="workflowId">该维修草案由 Agent 工作流自动生成，点击上方按钮可查看完整的多工具调用时间线。</template>
+          <template v-else>当前草案没有关联工作流记录，可能来自手工录入或旧版演示数据。</template>
         </p>
       </el-card>
     </template>

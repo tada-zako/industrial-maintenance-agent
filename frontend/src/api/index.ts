@@ -3,13 +3,14 @@
  *
  * Mock 数据与后端接口的字段命名不同，因此在这里集中完成协议转换，避免页面组件感知后端细节。
  */
-import { delay, del, get, isMockEnabled, patch, post } from './client'
+import { delay, del, get, isMockEnabled, patch, post, upload } from './client'
 import type {
   DashboardSummary,
   Device,
   DeviceDetail,
   DeviceFormData,
   DeviceStatusRecord,
+  ExternalMaterial,
   HistoricalFault,
   MaintenanceDraft,
   PaginatedResponse,
@@ -17,6 +18,7 @@ import type {
   ProblemFormData,
   RelatedDraft,
   WorkflowRun,
+  MaterialType,
 } from '../types'
 import {
   getMockDeviceDetail,
@@ -131,6 +133,20 @@ interface BackendDashboardSummary {
   problem_count: number
   draft_count: number
   latest_workflow_id: number | null
+}
+
+interface BackendMaterial {
+  id: number
+  filename: string
+  material_type: string
+  source_description: string
+  device_id: number | null
+  device_model: string | null
+  content_path: string | null
+  content: string | null
+  is_reference_allowed: boolean
+  created_at: string
+  updated_at: string
 }
 
 function queryString(params: Record<string, string | number | undefined>): string {
@@ -280,6 +296,7 @@ function toDraft(raw: BackendDraft, deviceName?: string): MaintenanceDraft {
     safety_notices: raw.safety_notices,
     evidence_refs: raw.evidence.map(toEvidence),
     generated_at: raw.created_at,
+    workflow_run_id: raw.workflow_run_id === null ? undefined : String(raw.workflow_run_id),
     status: draftStatusToUi(raw.status),
     needs_confirmation: raw.requires_human_confirmation,
     risk_level: raw.safety_notices.length > 0 ? 'high' : 'medium',
@@ -309,6 +326,22 @@ function toWorkflow(raw: BackendWorkflow, deviceName?: string): WorkflowRun {
       evidence_used: step.evidence.map((item) => item.title),
       error_info: step.error_message ?? undefined,
     })),
+  }
+}
+
+function toMaterial(raw: BackendMaterial): ExternalMaterial {
+  return {
+    id: String(raw.id),
+    filename: raw.filename,
+    material_type: raw.material_type as MaterialType,
+    source_description: raw.source_description,
+    device_id: raw.device_id === null ? undefined : String(raw.device_id),
+    device_model: raw.device_model ?? undefined,
+    content_path: raw.content_path ?? undefined,
+    content: raw.content ?? undefined,
+    is_reference_allowed: raw.is_reference_allowed,
+    created_at: raw.created_at,
+    updated_at: raw.updated_at,
   }
 }
 
@@ -631,6 +664,63 @@ export async function fetchWorkflowDetail(runId: string): Promise<WorkflowRun> {
   return toWorkflow(raw, raw.device_id === null ? undefined : names.get(String(raw.device_id)))
 }
 
+// ===================== 外部资料 =====================
+
+export async function fetchMaterials(params?: {
+  device_id?: string
+  material_type?: string
+  reference_allowed_only?: boolean
+}): Promise<ExternalMaterial[]> {
+  if (isMockEnabled()) {
+    await delay(250)
+    return []
+  }
+  const raw = await get<BackendMaterial[]>(`/api/materials${queryString({
+    device_id: params?.device_id ? Number(params.device_id) : undefined,
+    material_type: params?.material_type,
+    reference_allowed_only: params?.reference_allowed_only ? 'true' : undefined,
+  })}`)
+  return raw.map(toMaterial)
+}
+
+export async function importMaterial(data: {
+  file: File
+  source_description: string
+  device_id?: string
+  device_model?: string
+  is_reference_allowed: boolean
+}): Promise<ExternalMaterial> {
+  if (isMockEnabled()) {
+    await delay(350)
+    return {
+      id: `mock-material-${Date.now()}`,
+      filename: data.file.name,
+      material_type: 'external_reference',
+      source_description: data.source_description,
+      device_id: data.device_id,
+      device_model: data.device_model,
+      is_reference_allowed: data.is_reference_allowed,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  }
+  const form = new FormData()
+  form.append('file', data.file)
+  form.append('source_description', data.source_description)
+  if (data.device_id) form.append('device_id', data.device_id)
+  if (data.device_model) form.append('device_model', data.device_model)
+  form.append('is_reference_allowed', String(data.is_reference_allowed))
+  return toMaterial(await upload<BackendMaterial>('/api/materials/import', form))
+}
+
+export async function deleteMaterial(materialId: string): Promise<void> {
+  if (isMockEnabled()) {
+    await delay(250)
+    return
+  }
+  await del<void>(`/api/materials/${Number(materialId)}`)
+}
+
 // ===================== 健康检查 =====================
 
 export async function checkHealth(): Promise<boolean> {
@@ -641,6 +731,20 @@ export async function checkHealth(): Promise<boolean> {
     }
     await get('/api/health')
     return true
+  } catch {
+    return false
+  }
+}
+
+/** 通过 FastAPI 后端代理检查 Hermes，避免浏览器跨域直连 Hermes API。 */
+export async function checkHermesHealth(): Promise<boolean> {
+  try {
+    if (isMockEnabled()) {
+      await delay(200)
+      return true
+    }
+    const response = await get<{ reachable: boolean }>('/api/hermes/health')
+    return response.reachable === true
   } catch {
     return false
   }

@@ -33,6 +33,9 @@ class Settings(BaseSettings):
 
     material_upload_dir: Path = SERVICE_DATA_DIR / "uploads"
 
+    # Hermes API 由 maintenance-service 在容器网络内访问，避免浏览器跨域直连。
+    hermes_api_url: str = "http://hermes:8642"
+    hermes_health_timeout: float = 2.0
     hermes_mcp_url: str = ""
     hermes_mcp_auth_token: str = ""
     mcp_host: str = "0.0.0.0"

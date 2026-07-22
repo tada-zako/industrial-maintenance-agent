@@ -3,9 +3,9 @@
  * Hermes 入口页 -- 跳转 Hermes UI
  */
 import { ref, onMounted } from 'vue'
-import { checkHealth } from '../api'
+import { checkHealth, checkHermesHealth } from '../api'
 
-const hermesUrl = import.meta.env.VITE_HERMES_WEB_URL || 'http://127.0.0.1:8642'
+const hermesUrl = import.meta.env.VITE_HERMES_WEB_URL || 'http://127.0.0.1:9119'
 
 const agentStatus = ref<'checking' | 'online' | 'offline'>('checking')
 
@@ -19,7 +19,8 @@ const exampleQuestions = [
 
 async function checkAgentStatus() {
   agentStatus.value = 'checking'
-  const ok = await checkHealth()
+  const [maintenanceOk, hermesOk] = await Promise.all([checkHealth(), checkHermesHealth()])
+  const ok = maintenanceOk && hermesOk
   agentStatus.value = ok ? 'online' : 'offline'
 }
 
@@ -90,17 +91,25 @@ onMounted(checkAgentStatus)
       </el-col>
     </el-row>
 
-    <!-- 跳转按钮 -->
+    <!-- 跳转按钮；对话和 Provider 配置均复用 Hermes Dashboard。 -->
     <el-card shadow="never" style="margin-bottom: 24px; text-align: center; padding: 32px 0;">
       <h3 style="margin-bottom: 12px; font-size: 18px;">进入 Hermes 对话页面</h3>
       <p style="color: var(--color-text-secondary); margin-bottom: 24px; font-size: 14px;">
         在专用对话界面中与 Agent 交互，获取设备诊断、故障分析和维修建议
       </p>
-      <el-button type="primary" size="large" @click="openHermes" :disabled="agentStatus === 'offline'">
-        打开 Hermes UI
-      </el-button>
+      <div style="display: flex; justify-content: center; gap: 12px;">
+        <el-button type="primary" size="large" @click="openHermes" :disabled="agentStatus === 'offline'">
+          打开 Hermes UI
+        </el-button>
+        <el-button size="large" @click="openHermes" :disabled="agentStatus === 'offline'">
+          配置 Provider API
+        </el-button>
+      </div>
       <p v-if="agentStatus === 'offline'" style="color: var(--color-danger); margin-top: 12px; font-size: 13px;">
         Agent 服务离线，请检查 Hermes 是否已启动（端口 {{ hermesUrl.split(':').pop() }}）
+      </p>
+      <p v-else style="color: var(--color-text-dim); margin-top: 12px; font-size: 13px;">
+        Provider、模型和 API Key 请在 Hermes Dashboard 中配置，本项目不重复保存密钥。
       </p>
     </el-card>
 

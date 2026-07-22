@@ -13,6 +13,9 @@ export type DraftStatus = 'pending_review' | 'confirmed' | 'archived'
 /** 工作流运行状态 */
 export type WorkflowStatus = 'running' | 'completed' | 'failed'
 
+/** 外部运维资料类型 */
+export type MaterialType = 'manual' | 'sop' | 'case' | 'external_reference' | 'other'
+
 /** 步骤执行状态 */
 export type StepStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'
 
@@ -119,6 +122,7 @@ export interface MaintenanceDraft {
   safety_notices: string[]
   evidence_refs: EvidenceRef[]
   generated_at: string
+  workflow_run_id?: string
   status: DraftStatus
   needs_confirmation: boolean
   risk_level: 'low' | 'medium' | 'high' | 'critical'
@@ -130,6 +134,21 @@ export interface EvidenceRef {
   id: string
   label: string
   relationship: string
+}
+
+/** 外部资料元数据和可展示的文本内容 */
+export interface ExternalMaterial {
+  id: string
+  filename: string
+  material_type: MaterialType
+  source_description: string
+  device_id?: string
+  device_model?: string
+  content_path?: string
+  content?: string
+  is_reference_allowed: boolean
+  created_at: string
+  updated_at: string
 }
 
 /** 工作流运行记录 */
