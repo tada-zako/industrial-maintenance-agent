@@ -261,3 +261,12 @@ onMounted(() => {
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+:deep(.el-table) { border: 1px solid var(--ui-border); }
+:deep(.el-table__header-wrapper) { border-bottom: 1px solid var(--ui-border); }
+:deep(.el-table .cell) { line-height: 1.5; }
+:deep(.el-dialog__header) { margin-right: 0; padding: 18px 20px; border-bottom: 1px solid var(--ui-border); }
+:deep(.el-dialog__body) { padding: 22px 20px 10px; }
+:deep(.el-dialog__footer) { padding: 14px 20px 18px; border-top: 1px solid var(--ui-border); }
+</style>
