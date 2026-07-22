@@ -5,7 +5,11 @@ from datetime import UTC, datetime
 
 from services.maintenance_service.app.db.models import Device, Problem
 from services.maintenance_service.app.domain.enums import DeviceLifecycleStatus, WorkflowStepStatus
-from services.maintenance_service.app.mcp_server import _as_json, _normalize_workflow_step
+from services.maintenance_service.app.mcp_server import (
+    _as_json,
+    _device_identity_error,
+    _normalize_workflow_step,
+)
 
 
 def test_as_json_excludes_sqlalchemy_relationship_objects() -> None:
@@ -42,3 +46,16 @@ def test_normalize_workflow_step_accepts_agent_aliases() -> None:
     assert step["status"] is WorkflowStepStatus.FAILED
     assert step["failed"] is True
     assert step["error_message"] == "Neo4j 不可用"
+
+
+def test_device_identity_gate_rejects_guessed_device_identifiers() -> None:
+    """设备编号、名称或型号不一致时必须停止生成草案。"""
+
+    device = Device(code="AC-001", name="一号空压机", model="AC-SCREW-75", location="一号车间")
+
+    assert _device_identity_error(
+        device_code="AC-001", device_name="一号空压机", device_model="AC-SCREW-75", actual=device
+    ) is None
+    assert _device_identity_error(
+        device_code="AC-999", device_name=None, device_model=None, actual=device
+    ) == "设备编号与已查询设备不一致，已停止生成草案。"

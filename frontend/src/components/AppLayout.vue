@@ -11,6 +11,7 @@ const menuItems = [
   { path: '/problems', label: '问题中心', icon: 'Warning' },
   { path: '/drafts', label: '维修草案', icon: 'Document' },
   { path: '/materials', label: '运维资料', icon: 'Folder' },
+  { path: '/knowledge', label: '知识图谱', icon: 'Share' },
   { path: '/chat', label: 'Hermes 助手', icon: 'ChatDotRound' },
 ]
 
@@ -51,6 +52,7 @@ function isActive(path: string): boolean {
             <svg v-else-if="item.icon === 'Warning'" viewBox="0 0 24 24" width="18" height="18"><path d="M12 2L1 21h22L12 2zm0 4.5l7.5 12h-15l7.5-12z" fill="currentColor"/><circle cx="12" cy="16" r="1.5" fill="var(--color-bg-secondary)"/><rect x="11" y="9" width="2" height="5" rx="0.5" fill="var(--color-bg-secondary)"/></svg>
             <svg v-else-if="item.icon === 'Document'" viewBox="0 0 24 24" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 2v6h6" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" stroke-width="2"/><line x1="8" y1="17" x2="16" y2="17" stroke="currentColor" stroke-width="2"/></svg>
             <svg v-else-if="item.icon === 'Folder'" viewBox="0 0 24 24" width="18" height="18"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 9h18" stroke="currentColor" stroke-width="2"/></svg>
+            <svg v-else-if="item.icon === 'Share'" viewBox="0 0 24 24" width="18" height="18"><circle cx="6" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="m8.6 10.5 6.8-3M8.6 13.5l6.8 3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
             <svg v-else-if="item.icon === 'ChatDotRound'" viewBox="0 0 24 24" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="1.5" fill="currentColor"/></svg>
           </el-icon>
           <span>{{ item.label }}</span>

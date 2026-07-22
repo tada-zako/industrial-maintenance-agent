@@ -43,6 +43,13 @@ function goToDraft(draftId: string) {
   router.push(`/drafts/${draftId}`)
 }
 
+function goToKnowledge() {
+  if (device.value) {
+    // 设备名称不是 FaultSymptom 关键词；使用型号可同时加载该型号的案例和完整故障证据。
+    router.push({ path: '/knowledge', query: { model: device.value.model } })
+  }
+}
+
 onMounted(loadDetail)
 </script>
 
@@ -56,7 +63,10 @@ onMounted(loadDetail)
         </el-button>
         <h2>{{ device?.name || '设备详情' }}</h2>
       </div>
-      <el-button type="primary" @click="openHermes">在 Hermes 中询问</el-button>
+      <div style="display: flex; gap: 8px;">
+        <el-button @click="goToKnowledge">查看关联知识图谱</el-button>
+        <el-button type="primary" @click="openHermes">在 Hermes 中询问</el-button>
+      </div>
     </div>
 
     <LoadingState v-if="loading" />

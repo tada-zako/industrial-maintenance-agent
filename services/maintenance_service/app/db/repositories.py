@@ -28,6 +28,7 @@ from .models import (
     Problem,
     WorkflowRun,
     WorkflowStep,
+    utc_now,
 )
 
 
@@ -297,10 +298,15 @@ class MaintenanceDraftRepository:
         *,
         status: DraftStatus,
         requires_human_confirmation: bool | None = None,
+        review_feedback: str | None = None,
     ) -> MaintenanceDraft:
         draft.status = status
         if requires_human_confirmation is not None:
             draft.requires_human_confirmation = requires_human_confirmation
+        if review_feedback is not None:
+            draft.review_feedback = review_feedback
+        if status in {DraftStatus.CONFIRMED, DraftStatus.REJECTED}:
+            draft.reviewed_at = utc_now()
         await self.session.flush()
         return draft
 

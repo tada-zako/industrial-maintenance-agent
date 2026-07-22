@@ -18,6 +18,7 @@ const draftId = computed(() => route.params.draftId as string)
 const draft = ref<MaintenanceDraft | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const reviewFeedback = ref('')
 
 const workflowId = computed(() => {
   if (!draft.value) return undefined
@@ -32,6 +33,7 @@ async function loadDetail() {
   error.value = null
   try {
     draft.value = await fetchDraftDetail(draftId.value)
+    reviewFeedback.value = draft.value.review_feedback || ''
   } catch (e: any) {
     error.value = e.message || '加载失败'
   } finally {
@@ -42,9 +44,10 @@ async function loadDetail() {
 async function handleStatusChange(status: string) {
   if (!draft.value) return
   try {
-    await updateDraftStatus(draft.value.id, status)
-    draft.value.status = status as MaintenanceDraft['status']
-    ElMessage.success(status === 'confirmed' ? '草案已确认' : '草案已归档')
+    draft.value = await updateDraftStatus(draft.value.id, status, reviewFeedback.value || undefined)
+    ElMessage.success(
+      status === 'confirmed' ? '草案已确认' : status === 'rejected' ? '草案已驳回' : '草案已归档',
+    )
   } catch (e: any) {
     ElMessage.error(e.message || '操作失败')
   }
@@ -70,6 +73,7 @@ onMounted(loadDetail)
       </div>
       <div style="display: flex; gap: 8px;">
         <el-button v-if="draft?.status === 'pending_review'" type="success" @click="handleStatusChange('confirmed')">确认草案</el-button>
+        <el-button v-if="draft?.status === 'pending_review'" type="danger" plain @click="handleStatusChange('rejected')">驳回草案</el-button>
         <el-button v-if="draft?.status !== 'archived'" @click="handleStatusChange('archived')">归档</el-button>
       </div>
     </div>
@@ -89,6 +93,7 @@ onMounted(loadDetail)
           <el-descriptions-item label="草案状态">
             <el-tag v-if="draft.status === 'pending_review'" type="warning" size="small">待确认</el-tag>
             <el-tag v-else-if="draft.status === 'confirmed'" type="success" size="small">已确认</el-tag>
+            <el-tag v-else-if="draft.status === 'rejected'" type="danger" size="small">已驳回</el-tag>
             <el-tag v-else type="info" size="small">已归档</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="需人工确认">
@@ -100,6 +105,26 @@ onMounted(loadDetail)
             <span class="mono" style="font-size: 12px;">{{ new Date(draft.generated_at).toLocaleString('zh-CN') }}</span>
           </el-descriptions-item>
         </el-descriptions>
+      </el-card>
+
+      <el-card shadow="never" style="margin-bottom: 16px;">
+        <template #header><span style="font-weight: 600;">审核反馈</span></template>
+        <el-input
+          v-if="draft.status === 'pending_review'"
+          v-model="reviewFeedback"
+          type="textarea"
+          :rows="3"
+          maxlength="1000"
+          show-word-limit
+          placeholder="可填写确认或驳回该草案的简短意见"
+        />
+        <template v-else>
+          <p v-if="draft.review_feedback" style="color: var(--color-text-secondary);">{{ draft.review_feedback }}</p>
+          <el-empty v-else description="未填写审核意见" :image-size="48" />
+          <p v-if="draft.reviewed_at" class="mono" style="margin-top: 8px; color: var(--color-text-dim); font-size: 12px;">
+            审核时间：{{ new Date(draft.reviewed_at).toLocaleString('zh-CN') }}
+          </p>
+        </template>
       </el-card>
 
       <!-- 故障判断 -->

@@ -18,6 +18,8 @@ from .api.workflows import router as workflows_router
 from .config import settings
 from .db.init_db import initialize_database
 from .db.session import dispose_engine
+from .graph.client import GraphUnavailableError
+from .graph.seed import initialize_knowledge_graph
 
 
 @asynccontextmanager
@@ -25,6 +27,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """启动时准备 SQLite 表结构，关闭时释放异步连接池。"""
 
     await initialize_database()
+    try:
+        await initialize_knowledge_graph()
+    except GraphUnavailableError:
+        # SQLite API 可在图谱服务短暂不可用时继续启动；Compose 会在 Neo4j 健康后重启服务。
+        pass
     yield
     await dispose_engine()
 

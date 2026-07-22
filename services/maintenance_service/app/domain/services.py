@@ -242,6 +242,7 @@ class MaintenanceService:
         *,
         status: DraftStatus,
         requires_human_confirmation: bool | None = None,
+        review_feedback: str | None = None,
     ) -> MaintenanceDraft:
         """修改维修草案状态。"""
 
@@ -250,6 +251,7 @@ class MaintenanceService:
             draft,
             status=status,
             requires_human_confirmation=requires_human_confirmation,
+            review_feedback=review_feedback,
         )
         return await self._commit(updated)
 
