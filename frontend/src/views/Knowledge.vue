@@ -2,6 +2,10 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import VChart from 'vue-echarts'
+import { use } from 'echarts/core'
+import { GraphChart } from 'echarts/charts'
+import { TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsOption } from 'echarts'
 import { ElMessage } from 'element-plus'
 import { fetchKnowledge } from '../api'
@@ -9,6 +13,9 @@ import type { KnowledgeGraphResult, KnowledgeNode } from '../types'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorState from '../components/ErrorState.vue'
 import EmptyState from '../components/EmptyState.vue'
+
+// 知识图谱使用 ECharts 按需构建，必须显式注册图谱、提示框和 Canvas 渲染器。
+use([GraphChart, TooltipComponent, CanvasRenderer])
 
 const route = useRoute()
 const keyword = ref(String(route.query.keyword || ''))
@@ -75,8 +82,11 @@ async function loadKnowledge() {
   }
 }
 
-function handleChartClick(params: { data?: { id?: string } }) {
-  const nodeId = params.data?.id
+function handleChartClick(params: { data?: unknown }) {
+  const nodeId = params.data && typeof params.data === 'object' && 'id' in params.data
+    && typeof params.data.id === 'string'
+    ? params.data.id
+    : undefined
   selectedNode.value = result.value?.nodes.find((node) => node.id === nodeId) ?? null
 }
 
@@ -181,6 +191,19 @@ onMounted(loadKnowledge)
           </el-card>
         </el-col>
       </el-row>
+
+      <el-card shadow="never" class="knowledge-evidence">
+        <template #header><span>证据来源</span></template>
+        <el-table v-if="result.evidence.length" :data="result.evidence" size="small" stripe>
+          <el-table-column prop="title" label="证据" min-width="180" />
+          <el-table-column prop="source_type" label="来源" width="150" />
+          <el-table-column prop="reference" label="关系路径" min-width="260" />
+          <el-table-column label="置信度" width="100">
+            <template #default="{ row }">{{ row.confidence == null ? '-' : `${Math.round(row.confidence * 100)}%` }}</template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-else description="没有可展示的证据来源" :image-size="56" />
+      </el-card>
     </template>
   </div>
 </template>
@@ -193,6 +216,7 @@ onMounted(loadKnowledge)
 .card-title-row { display: flex; align-items: center; justify-content: space-between; }
 .graph-count { color: var(--color-text-secondary); font-size: 12px; }
 .knowledge-details { margin-top: 16px; }
+.knowledge-evidence { margin-top: 16px; }
 @media (max-width: 900px) {
   .knowledge-grid { grid-template-columns: 1fr; }
   .graph-card, .node-card { min-height: auto; }

@@ -45,7 +45,8 @@ function goToDraft(draftId: string) {
 
 function goToKnowledge() {
   if (device.value) {
-    router.push({ path: '/knowledge', query: { model: device.value.model, keyword: device.value.name } })
+    // 设备名称不是 FaultSymptom 关键词；使用型号可同时加载该型号的案例和完整故障证据。
+    router.push({ path: '/knowledge', query: { model: device.value.model } })
   }
 }
 

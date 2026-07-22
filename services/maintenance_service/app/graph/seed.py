@@ -16,7 +16,7 @@ async def initialize_knowledge_graph() -> None:
                 """
                 UNWIND $items AS item
                 MERGE (device:Device {code: item.code})
-                SET device.name = item.name
+                ON CREATE SET device.name = item.name
                 WITH device, item
                 MATCH (model:DeviceModel {name: item.model})
                 MERGE (device)-[:INSTANCE_OF]->(model)

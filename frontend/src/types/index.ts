@@ -164,7 +164,18 @@ export interface KnowledgeGraphResult {
     safety_notices: string[]
   }>
   cases: KnowledgeCase[]
-  evidence: EvidenceRef[]
+  evidence: KnowledgeEvidence[]
+}
+
+/** 知识图谱查询返回的证据，与后端 EvidenceItem 字段保持一致。 */
+export interface KnowledgeEvidence {
+  source_type: string
+  source_id: string | null
+  title: string
+  reference: string | null
+  excerpt: string | null
+  confidence: number | null
+  details: Record<string, unknown>
 }
 
 /** 知识图谱证据引用 */
