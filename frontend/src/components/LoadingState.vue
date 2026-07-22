@@ -13,12 +13,9 @@ defineProps<{
 
 <style scoped>
 .loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 0;
-  color: var(--color-text-secondary);
-  gap: 16px;
+  display: flex; align-items: center; justify-content: center; min-height: 180px; gap: 10px;
+  color: var(--ui-text-muted); font-size: 13px;
 }
+.loading-state .el-icon { color: var(--ui-accent); }
+.loading-state p { margin: 0; }
 </style>
