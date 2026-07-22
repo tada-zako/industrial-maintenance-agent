@@ -101,7 +101,7 @@
 - 提示词设计、幻觉控制、拒答条件和安全边界；
 - 评价集、测试用例、工具轨迹和方案质量评价。
 
-前端部分还需要掌握 React 组件、TypeScript、Vite、路由、HTTP 数据请求、加载/错误状态和基础数据可视化；不要求学习 React Server Components 或复杂 SSR。
+前端部分还需要掌握 Vue 3 组件、TypeScript、Vite、Vue Router、HTTP 数据请求、加载/错误状态和基础数据可视化；不要求学习复杂 SSR。
 
 ### 4.3 可以暂缓
 
@@ -136,7 +136,7 @@ flowchart LR
 | 知识图谱          | 无                        | 图谱 schema、种子数据、Cypher 查询     |
 | 资料检索          | 可自建                    | SOP、案例、设备资料的导入和检索        |
 | 数据安全与审计    | 部分可复用                | 操作分类、日志、敏感工具禁用和确认机制 |
-| 交互入口          | React 工业运维看板 + Hermes CLI/Web UI | 看板展示业务数据，Hermes 负责 Agent 对话 |
+| 交互入口          | Vue 工业运维看板 + Hermes Web UI | 看板展示业务数据，Hermes 负责 Agent 对话 |
 
 ## 6. 基于 Hermes Agent 的开发方式
 
@@ -173,7 +173,7 @@ Skill 应规定：
 - 不能把可能原因表述成确定事实；
 - 任何工单创建或设备控制操作都必须停在人工确认前。
 
-本项目不修改 Hermes Agent 源码，也不重复开发 Agent 聊天窗口。Hermes 的 CLI、Desktop 或 Web UI 继续负责对话；项目新增一个独立的 React 工业运维看板，用于展示设备、问题、维修草案和工具调用流程。
+本项目不修改 Hermes Agent 源码，也不重复开发 Agent 聊天窗口。Hermes 的 Web UI 继续负责对话和 Provider 配置；项目新增一个独立的 Vue 工业运维看板，用于展示设备、问题、维修草案、外部资料和工具调用流程。
 
 MCP 工具服务推荐使用 Python FastMCP 实现。由于新增看板需要让浏览器读取设备和历史数据，因此同时增加只读 HTTP 查询接口，推荐使用 FastAPI。FastAPI 只负责看板数据访问，不负责 Agent 循环；FastMCP 和 FastAPI 应复用同一套业务服务与数据查询逻辑。
 
@@ -354,7 +354,7 @@ MVP 采用混合策略即可：
 ### NFR-03 可测试
 
 - MCP 工具有参数校验和单元测试；
-- 至少有 3 个端到端测试；
+- 至少准备 3 个可重复演示场景；不强制建立独立的前端 Vitest、Playwright 或自动化 E2E 工程；
 - 至少包含一个“设备不存在/证据不足”的失败场景。
 
 ### NFR-04 性能目标
@@ -412,7 +412,7 @@ MVP 采用混合策略即可：
 最终演示成品应能做到：
 
 1. 运行一条 Compose 命令启动 Hermes、MCP 服务和 Neo4j；
-2. 通过 React 看板查看设备状态、待处理问题和历史维修草案；
+2. 通过 Vue 看板查看设备状态、待处理问题和历史维修草案；
 3. 从看板的“开始诊断/查看对话”入口跳转到 Hermes Web UI；
 4. 展示多工具调用链和知识图谱中的设备—故障—维修关系；
 5. 返回一份结构化、带证据和安全提醒的维修方案；
@@ -430,7 +430,7 @@ MVP 采用混合策略即可：
 - 使用 Hermes 官方镜像作为基础，不在宿主机执行 Hermes 安装脚本；
 - 自定义 MCP 服务和 Neo4j 也作为 Compose 服务；
 - 仅使用当前项目下的 runtime/，或 Docker named volume 保存 Hermes 配置、会话和图数据库数据；
-- 端口仅绑定到 127.0.0.1，例如 Hermes API 使用 127.0.0.1:8642；
+- 端口仅绑定到 127.0.0.1，例如 Hermes API 使用 127.0.0.1:8642、Hermes Dashboard 使用 127.0.0.1:9119；
 - 不挂载整个 C:\Users\...，不把宿主机 PATH、SSH 密钥或全部环境变量传入容器；
 - 将 .env 加入 .gitignore，只保留 .env.example；
 - 容器之间通过 Compose 服务名访问，例如 maintenance-mcp:8000、neo4j:7687；
@@ -489,7 +489,7 @@ docker compose down -v --remove-orphans
 - 增加设备不存在、证据不足、症状冲突场景；
 - 禁用写入类工具或增加人工确认 token；
 - 固化结构化方案 schema；
-- 使用 pnpm 创建 React/Vite 前端并完成总览、设备、问题、草案四类页面骨架。
+- 使用 pnpm 创建 Vue 3/Vite 前端并完成总览、设备、问题、草案、资料和工作流页面。
 
 ### 第 6 天：测试与演示
 
@@ -503,7 +503,7 @@ docker compose down -v --remove-orphans
 
 - 清理无关代码和密钥；
 - 验证全新环境的启动与清理；
-- 将 frontend 和 maintenance-api 加入 Compose；
+- 将 frontend 和 maintenance-service 加入 Compose；
 - 完善 README、架构图、测试结果和局限性；
 - 整理课程报告、PPT 和答辩问答。
 
@@ -556,7 +556,7 @@ docker compose down -v --remove-orphans
 
 ```mermaid
 flowchart LR
-    F[React 工业运维看板] -->|只读 HTTP API| A[FastAPI Dashboard API]
+    F[Vue 工业运维看板] -->|HTTP API| A[FastAPI Dashboard API]
     A --> D[共用业务服务]
     D --> N[Neo4j / 案例库 / 审计记录]
     H[Hermes Agent] -->|MCP Tool Calling| M[FastMCP Server]
@@ -568,16 +568,15 @@ flowchart LR
 
 | 层次 | 选型 | 说明 |
 |---|---|---|
-| 前端框架 | React 19.x + TypeScript | 组件化实现业务看板；不使用 Next.js SSR |
+| 前端框架 | Vue 3 + TypeScript | 使用 Composition API 实现业务看板；不使用 SSR |
 | 构建工具 | Vite | 快速开发、HMR 和静态构建 |
-| 路由 | React Router | 管理看板、设备详情、问题、草案和流程详情路由 |
-| 样式 | Tailwind CSS + CSS Variables | 统一颜色、间距、状态和响应式规则 |
-| 组件 | 自定义业务组件 + 少量无障碍基础组件 | 不直接套用通用后台模板 |
-| 数据请求 | TanStack Query | 处理查询缓存、加载、刷新、错误和失效 |
+| 路由 | Vue Router | 管理看板、设备详情、问题、资料、草案和流程详情路由 |
+| 样式 | CSS Variables + 页面样式 | 统一颜色、间距、状态和响应式规则 |
+| 组件 | Element Plus | 复用表格、表单、抽屉、标签、时间线等基础组件 |
+| 数据请求 | 原生 Fetch 封装 | 处理必要的异步请求、加载、刷新和错误 |
 | 图表 | Apache ECharts | 设备状态分布、问题趋势、流程耗时等可视化 |
-| 图标 | Lucide React | 统一线性图标风格 |
 | 包管理 | pnpm | 前端依赖安装和脚本执行 |
-| 测试 | Vitest + React Testing Library；必要时 Playwright | 组件、路由和关键流程验证 |
+| 测试 | 浏览器定向检查 | 本 Demo 不额外建立 Vitest、Playwright 测试工程 |
 
 当前页面采用“工业控制室”视觉方向：深色蓝灰背景、青色数据主色、琥珀色注意、红色告警、绿色正常；设备编号和报警码使用等宽字体。页面应有明确的信息层级和状态颜色，避免紫色渐变、通用 SaaS 模板和无意义装饰。
 
@@ -592,6 +591,7 @@ flowchart LR
 | `/drafts` | 维修草案历史 | 草案编号、设备、故障候选、生成时间、状态、证据数量和查看入口 |
 | `/drafts/:draftId` | 草案详情 | 故障判断、证据、维修步骤、备件/工具、安全措施、验证方法和校验结果 |
 | `/workflows/:runId` | Agent 工作流程 | 展示本次 Agent 从问题输入到方案校验的步骤、工具、状态、耗时和证据 |
+| `/materials` | 运维资料 | 外部资料导入、来源、关联设备、参考状态和详情 |
 | `/chat` | Hermes 对话入口 | 不实现聊天窗口；跳转到配置项 `VITE_HERMES_WEB_URL` 指向的 Hermes Web UI |
 
 `/chat` 默认使用外部导航，不强制 iframe 嵌入。这样可以避免 Hermes Web UI 的认证、CSP、跨域和会话问题；如果后续配置了同源反向代理，再考虑嵌入式展示。
@@ -635,22 +635,25 @@ flowchart LR
 | `GET /api/drafts` | 维修草案历史和过滤 |
 | `GET /api/drafts/{draft_id}` | 草案详情 |
 | `GET /api/workflows/{run_id}` | Agent 工具调用流程和证据摘要 |
+| `GET /api/materials` | 外部资料列表和过滤 |
+| `POST /api/materials/import` | 受控导入外部资料 |
+| `DELETE /api/materials/{material_id}` | 删除外部资料 |
 | `GET /api/health` | 看板 API 健康检查 |
 
-这些接口第一阶段只读，不允许前端直接创建工单、修改设备状态或执行维修动作。所有响应使用稳定的 Pydantic schema，至少包含 `id`、`status`、`updated_at` 和 `source` 等字段。
+看板允许设备、问题、草案状态和外部资料的最低限度 CRUD，但不允许前端执行真实设备控制或创建复杂工单。所有响应使用稳定的 Pydantic schema，至少包含 `id`、`status`、`updated_at` 和 `source` 等字段。
 
 ### 15.6 需要实现的前端代码
 
 前端开发任务包括：
 
-1. 使用 pnpm 创建 `frontend/` React + TypeScript + Vite 应用。
+1. 使用 pnpm 创建 `frontend/` Vue 3 + TypeScript + Vite 应用。
 2. 实现全局布局、侧边栏导航、顶部状态栏、面包屑和 Hermes 对话入口。
 3. 实现总览页、设备列表/详情页、问题中心、草案历史/详情页和工作流程页。
 4. 抽取设备状态徽章、严重程度标签、数据卡片、时间线、证据列表、空状态、加载状态和错误状态等复用组件。
-5. 使用 TanStack Query 对接 FastAPI 数据接口，处理缓存、刷新、重试和接口异常。
+5. 使用原生 Fetch 封装对接 FastAPI 数据接口，处理必要的加载、刷新和接口异常。
 6. 使用 ECharts 实现至少一个状态分布图和一个问题/草案趋势图；图表数据必须来自 API，不写死在组件中。
 7. 为 `/chat` 实现可配置跳转，不实现 Agent 消息列表、输入框、流式输出和工具调用逻辑。
-8. 为关键路由和流程时间线补充组件测试，确保无数据、接口失败和流程失败时仍然可读。
+8. 为关键路由和流程时间线预留浏览器定向检查清单；不额外建立 Vitest、Playwright 或复杂前端测试工程。
 
 ### 15.7 后端与 Compose 配套任务
 
@@ -665,12 +668,12 @@ Neo4j/案例库     → 数据来源
 
 后续 Compose 应增加：
 
-- `maintenance-api`：同时运行 FastMCP 和 FastAPI 的 Python 服务；
+- `maintenance-service`：同时运行 FastMCP 和 FastAPI 的 Python 服务；
 - `frontend`：运行 Vite 开发服务或构建后的静态站点；
 - 仅向宿主机绑定看板端口，例如 `127.0.0.1:3000`；
 - 服务间通过 Compose 网络访问，浏览器不直接访问 Neo4j 7687 端口。
 
-当前阶段已经运行的 Hermes 和 Neo4j Compose 服务可以保留；前端和 API 服务属于下一阶段代码实现，不要求在本次需求文档更新中立即加入 Compose。
+当前项目已经通过 Compose 集成 Hermes、Neo4j、maintenance-service 和 frontend；Hermes API 使用 8642，Dashboard 使用 9119，浏览器只访问前端和 FastAPI。
 
 ### 15.8 前端验收标准
 
@@ -679,7 +682,9 @@ Neo4j/案例库     → 数据来源
 - [ ] `/problems` 能区分正常、注意和严重问题，并显示问题来源。
 - [ ] `/drafts` 能查看历史草案，详情页能展示证据和安全校验结果。
 - [ ] `/workflows/:runId` 能按时间线展示至少一次完整多工具调用流程。
+- [ ] `/materials` 能导入资料、查看详情并删除资料记录。
 - [ ] `/chat` 能跳转到配置的 Hermes Web UI，不包含重复的聊天实现。
+- [ ] `/chat` 中的 Provider 配置入口能够打开 Hermes Dashboard。
 - [ ] API 加载、空数据、请求失败和无权限场景都有明确反馈。
 - [ ] 浏览器不直接连接 Neo4j，不直接暴露 MCP 内部连接细节。
 - [ ] 页面在常见桌面分辨率下可用，并在窄屏下保持主要信息可读。
@@ -697,7 +702,8 @@ Neo4j/案例库     → 数据来源
 6. [Hermes Agent Skills 系统](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)
 7. [Hermes Agent 更新与卸载](https://hermes-agent.nousresearch.com/docs/getting-started/updating)
 8. [Hermes Agent GitHub 仓库](https://github.com/NousResearch/hermes-agent)
-9. [React 官方文档](https://react.dev/)
+9. [Vue 官方文档](https://vuejs.org/)
 10. [Vite 官方文档](https://vite.dev/guide/)
-11. [TanStack Query React 文档](https://tanstack.com/query/latest/docs/framework/react/overview)
-12. [Apache ECharts 官方手册](https://echarts.apache.org/handbook/en/get-started/)
+11. [Vue Router 官方文档](https://router.vuejs.org/)
+12. [Element Plus 官方文档](https://element-plus.org/)
+13. [Apache ECharts 官方手册](https://echarts.apache.org/handbook/en/get-started/)
