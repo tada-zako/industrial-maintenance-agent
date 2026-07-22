@@ -136,6 +136,8 @@ onMounted(checkAgentStatus)
 </template>
 
 <style scoped>
+.page-container :deep(.el-card) { border-radius: 2px; }
+.page-container :deep(.el-card__header) { border-bottom-color: var(--ui-border); font: 12px var(--font-mono); }
 .agent-card {
   height: 100%;
   min-height: 140px;

@@ -209,6 +209,9 @@ onMounted(loadKnowledge)
 </template>
 
 <style scoped>
+.page-container :deep(.el-card) { border-radius: 2px; }
+.page-container :deep(.el-card__header) { border-bottom-color: var(--ui-border); font: 12px var(--font-mono); }
+.page-container :deep(.el-table) { border: 1px solid var(--ui-border); }
 .knowledge-filter { margin-bottom: 16px; }
 .knowledge-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
 .graph-card, .node-card { min-height: 520px; }
