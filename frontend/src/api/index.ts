@@ -175,7 +175,7 @@ function deviceStatusToUi(status: string): Device['status'] {
 }
 
 function deviceStatusToBackend(status: string | undefined): string | undefined {
-  if (status === undefined) return undefined
+  if (!status) return undefined
   if (status === 'normal') return 'active'
   if (status === 'warning') return 'maintenance'
   return 'fault'
