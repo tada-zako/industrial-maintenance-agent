@@ -19,6 +19,7 @@ frontend/dist/
 
 # Local runtime data and dependency cache
 .uv-cache/
+.pnpm-store/
 data/*.db
 services/maintenance_service/data/*.db
 services/maintenance_service/data/uploads/*

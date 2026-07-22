@@ -1,9 +1,11 @@
-/**
- * HTTP 请求封装 -- 基于原生 Fetch，支持 Mock 回退
- */
-import { isMockEnabled } from './index'
+/** HTTP 请求封装，基于原生 Fetch。 */
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
+
+/** 只有显式配置 VITE_USE_MOCK=true 时才使用前端 Mock 数据。 */
+export function isMockEnabled(): boolean {
+  return import.meta.env.VITE_USE_MOCK === 'true'
+}
 
 /** 通用 Fetch 包装，自动处理 JSON 和错误 */
 export async function request<T>(

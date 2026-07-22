@@ -56,7 +56,16 @@ services:
     image: nousresearch/hermes-agent:latest
     container_name: production-internship-hermes
     restart: unless-stopped
-    command: ["gateway", "run"]
+    command:
+      - sh
+      - -c
+      - |
+        if ! hermes mcp list | grep -q "maintenance"; then
+          until printf 'n\ny\n' | hermes mcp add maintenance --url "$$MAINTENANCE_MCP_URL"; do
+            sleep 2
+          done
+        fi
+        exec hermes gateway run
     environment:
       HERMES_HOME: /opt/data
       API_SERVER_ENABLED: "true"
@@ -69,6 +78,9 @@ services:
       - "127.0.0.1:8642:8642"
     volumes:
       - hermes_data:/opt/data
+    depends_on:
+      maintenance-mcp:
+        condition: service_started
 
   neo4j:
     image: neo4j:5-community
@@ -87,6 +99,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8000}
+        VITE_HERMES_WEB_URL: ${VITE_HERMES_WEB_URL:-http://127.0.0.1:8642}
+        VITE_USE_MOCK: ${VITE_USE_MOCK:-false}
+    container_name: production-internship-maintenance-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      maintenance-service:
+        condition: service_started
 
 volumes:
   maintenance_data:
