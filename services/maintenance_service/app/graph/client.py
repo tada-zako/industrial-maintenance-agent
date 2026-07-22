@@ -1,11 +1,14 @@
 """Neo4j 官方异步 Driver 的创建和受控生命周期。"""
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from ..config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class GraphUnavailableError(Exception):
@@ -32,6 +35,8 @@ async def graph_driver() -> AsyncIterator[AsyncDriver]:
     except GraphUnavailableError:
         raise
     except Exception as exc:
+        # 日志保留异常类型，帮助区分认证失败、网络失败和数据库未启动；不向浏览器暴露底层细节。
+        logger.warning("Neo4j connectivity check failed: %s: %s", type(exc).__name__, exc)
         raise GraphUnavailableError("知识图谱服务暂不可用，请稍后重试") from exc
     finally:
         await driver.close()

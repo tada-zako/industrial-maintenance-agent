@@ -3,6 +3,8 @@
 from typing import Any
 
 from fastmcp import FastMCP
+from pydantic import TypeAdapter
+from sqlalchemy import inspect as sqlalchemy_inspect
 
 from .config import settings
 from .db.session import session_context
@@ -21,23 +23,65 @@ mcp = FastMCP(
     ),
 )
 
+_JSON_DICT_ADAPTER = TypeAdapter(dict[str, Any])
+
 
 def _as_json(model: Any) -> dict[str, Any]:
-    """将 Pydantic 或 ORM 响应转成 MCP 可序列化字典。"""
+    """将 Pydantic 或 ORM 响应转成不包含关系对象的 JSON 字典。"""
 
     if hasattr(model, "model_dump"):
         return model.model_dump(mode="json")
-    return {
-        key: value.value if hasattr(value, "value") else value
-        for key, value in vars(model).items()
-        if not key.startswith("_")
+
+    # 只读取 SQLAlchemy 的列属性，避免 problems、steps 等关系对象无法被 MCP 序列化。
+    mapper = sqlalchemy_inspect(model).mapper
+    column_values = {
+        attribute.key: getattr(model, attribute.key) for attribute in mapper.column_attrs
     }
+    return _JSON_DICT_ADAPTER.dump_python(column_values, mode="json")
 
 
 def _domain_error(exc: Exception) -> dict[str, Any]:
     """MCP 保持结构化失败结果，供 Agent 继续追问而不是编造结论。"""
 
     return {"ok": False, "error": str(exc), "data": []}
+
+
+def _text_value(value: Any) -> str | None:
+    """将工作流摘要字段统一转换为可保存的文本。"""
+
+    return None if value is None else str(value)
+
+
+def _normalize_workflow_step(step: dict[str, Any]) -> dict[str, Any]:
+    """兼容 Agent 常用的 tool/status/note 字段，并转换为后端工作流契约。"""
+
+    raw_status = step.get("status", "completed")
+    status_value = (
+        raw_status.value if isinstance(raw_status, WorkflowStepStatus) else str(raw_status).lower()
+    )
+    failed = bool(step.get("failed")) or status_value in {"failed", "error", "failure"}
+    if failed:
+        status = WorkflowStepStatus.FAILED
+    elif status_value == WorkflowStepStatus.SKIPPED.value:
+        status = WorkflowStepStatus.SKIPPED
+    elif status_value == WorkflowStepStatus.RUNNING.value:
+        status = WorkflowStepStatus.RUNNING
+    else:
+        status = WorkflowStepStatus.COMPLETED
+
+    note = _text_value(step.get("note"))
+    return {
+        "step_name": _text_value(step.get("step_name") or step.get("name") or step.get("tool"))
+        or "工具调用",
+        "tool_name": _text_value(step.get("tool_name") or step.get("tool")),
+        "status": status,
+        "failed": failed,
+        "input_summary": _text_value(step.get("input_summary") or step.get("input")),
+        "output_summary": _text_value(step.get("output_summary") or step.get("output")),
+        "evidence": step.get("evidence") or [],
+        "error_message": _text_value(step.get("error_message"))
+        or (note if failed else None),
+    }
 
 
 @mcp.tool()
@@ -131,7 +175,7 @@ async def create_repair_draft(
     safety_notices: list[str] | None = None,
     evidence: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """保存维修方案草案。此工具只保存待人工确认的建议，不会控制设备。"""
+    """保存维修方案草案；调用前必须确认设备查询结果，不得猜测 device_id。"""
 
     default_safety = ["停机、泄压并执行上锁挂牌", "由具备资质的人员复核后再维修"]
     default_inspection = ["核对设备当前状态与历史故障", "确认停机和泄压条件"]
@@ -210,28 +254,36 @@ async def record_workflow_run(
                 await service.get_device(device_id)
             if draft_id is not None:
                 await service.get_draft(draft_id)
+            normalized_steps = [_normalize_workflow_step(step) for step in steps or []]
+            workflow_failed = failed or any(step["failed"] for step in normalized_steps)
+            workflow_error = error_message or next(
+                (
+                    step["error_message"]
+                    for step in normalized_steps
+                    if step["error_message"]
+                ),
+                None,
+            )
             run = await service.workflow.create_run(user_question, device_id=device_id)
-            for index, step in enumerate(steps or [], start=1):
+            for index, step in enumerate(normalized_steps, start=1):
                 await service.workflow.record_step(
                     run.id,
                     step_order=index,
-                    step_name=str(step.get("step_name", "工具调用")),
-                    tool_name=step.get("tool_name"),
-                    status=WorkflowStepStatus.FAILED
-                    if step.get("failed")
-                    else WorkflowStepStatus.COMPLETED,
-                    input_summary=step.get("input_summary"),
-                    output_summary=step.get("output_summary"),
-                    evidence=step.get("evidence", []),
-                    error_message=step.get("error_message"),
+                    step_name=step["step_name"],
+                    tool_name=step["tool_name"],
+                    status=step["status"],
+                    input_summary=step["input_summary"],
+                    output_summary=step["output_summary"],
+                    evidence=step["evidence"],
+                    error_message=step["error_message"],
                 )
             completed = await service.workflow.finish_run(
                 run,
-                status=WorkflowStatus.FAILED if failed else WorkflowStatus.COMPLETED,
+                status=WorkflowStatus.FAILED if workflow_failed else WorkflowStatus.COMPLETED,
                 draft_id=draft_id,
-                error_message=error_message,
+                error_message=workflow_error,
             )
-            return {"ok": not failed, "data": _as_json(completed), "source": "sqlite"}
+            return {"ok": not workflow_failed, "data": _as_json(completed), "source": "sqlite"}
     except DomainError as exc:
         return _domain_error(exc)
 

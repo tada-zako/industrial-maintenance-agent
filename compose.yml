@@ -17,6 +17,7 @@ services:
       NEO4J_USERNAME: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:-local-development-only-change-me}
       MATERIAL_UPLOAD_DIR: /app/services/maintenance_service/data/uploads
+      HERMES_API_URL: http://hermes:8642
       HERMES_MCP_URL: http://maintenance-mcp:8001/mcp
     ports:
       - "127.0.0.1:8000:8000"
@@ -116,7 +117,6 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://127.0.0.1:8000}
         VITE_HERMES_WEB_URL: ${VITE_HERMES_WEB_URL:-http://127.0.0.1:9119}
-        VITE_HERMES_API_HEALTH_URL: ${VITE_HERMES_API_HEALTH_URL:-http://127.0.0.1:8642/health}
         VITE_USE_MOCK: ${VITE_USE_MOCK:-false}
     container_name: production-internship-maintenance-frontend
     restart: unless-stopped

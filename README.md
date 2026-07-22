@@ -52,6 +52,8 @@ docker compose ps
 
 Compose 会启动 Hermes、FastAPI/FastMCP、Vue 前端和 Neo4j。首次启动会初始化 SQLite Mock 数据和 Neo4j 示例知识图谱。
 
+请在首次启动前确定 `.env` 中的 `NEO4J_PASSWORD`。Neo4j 数据卷只会在第一次初始化时设置密码，后续修改环境变量不会自动修改已有数据卷的密码；已有数据卷需要使用原密码同步，或在确认数据可重建后单独重建 Neo4j 数据卷。
+
 ## 访问地址
 
 | 服务 | 地址 | 用途 |
@@ -60,10 +62,10 @@ Compose 会启动 Hermes、FastAPI/FastMCP、Vue 前端和 Neo4j。首次启动�
 | Hermes Web Dashboard | [http://127.0.0.1:9119](http://127.0.0.1:9119) | Hermes 对话、Provider 和模型配置 |
 | FastAPI | [http://127.0.0.1:8000](http://127.0.0.1:8000) | 浏览器业务 API |
 | FastAPI 健康检查 | [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health) | 维护服务状态 |
-| Hermes API 健康检查 | [http://127.0.0.1:8642/health](http://127.0.0.1:8642/health) | Hermes API 状态 |
+| Hermes API 健康检查 | [http://127.0.0.1:8000/api/hermes/health](http://127.0.0.1:8000/api/hermes/health) | 后端代理检查 Hermes API 状态 |
 | Neo4j Browser | [http://127.0.0.1:7474](http://127.0.0.1:7474) | 可选的知识图谱查看 |
 
-`8642` 是 Hermes API，不是 Web UI。直接访问 `http://127.0.0.1:8642/` 返回 404 属于正常现象；访问 `/health` 或使用 `9119` 进入 Dashboard。
+`8642` 是 Hermes API，不是 Web UI。直接访问 `http://127.0.0.1:8642/` 返回 404 属于正常现象；浏览器看板通过 FastAPI 代理检查它，用户对话和 Provider 配置使用 `9119` Dashboard。
 
 Hermes Dashboard 默认使用 `.env` 中的以下本地认证配置：
 

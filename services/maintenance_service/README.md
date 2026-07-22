@@ -9,7 +9,7 @@
 
 阶段一、二的独立后端服务边界，同时承载 FastAPI HTTP 接口、FastMCP 工具入口、共享业务服务、SQLite 和 Neo4j 访问。
 
-当前已完成 `/api/health`、SQLite 数据模型、Mock 数据初始化、共享 Repository/domain 服务、设备/问题/草案/资料/工作流 FastAPI API、知识图谱查询和 MCP 工具。资料上传仅保存受控文件和元数据，不执行文件内容。
+当前已完成 `/api/health`、`/api/hermes/health`、SQLite 数据模型、Mock 数据初始化、共享 Repository/domain 服务、设备/问题/草案/资料/工作流 FastAPI API、知识图谱查询和 MCP 工具。资料上传仅保存受控文件和元数据，不执行文件内容。
 
 步骤一已建立以下 SQLite 表：`devices`、`device_statuses`、`problems`、`maintenance_drafts`、`workflow_runs`、`workflow_steps`、`external_materials` 和 `audit_records`。数据库默认使用异步 SQLAlchemy + `aiosqlite`，数据文件位于服务目录的 `data/maintenance.db`。
 
@@ -21,7 +21,7 @@
 uv run uvicorn services.maintenance_service.app.main:app --reload --port 8000
 ```
 
-健康检查：`http://127.0.0.1:8000/api/health`
+健康检查：`http://127.0.0.1:8000/api/health`；Hermes 代理检查：`http://127.0.0.1:8000/api/hermes/health`
 
 当前已提供设备、设备状态、问题、维修草案、外部资料、工作流和看板接口；设备、问题和草案的删除操作采用归档，不物理删除历史记录。外部资料通过 `/api/materials/import` 受控导入，通过 `/api/materials` 查询。
 

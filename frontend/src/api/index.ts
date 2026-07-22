@@ -736,12 +736,15 @@ export async function checkHealth(): Promise<boolean> {
   }
 }
 
-/** 直接检查 Hermes API 健康端点，避免把维护服务状态误当成 Agent 状态。 */
+/** 通过 FastAPI 后端代理检查 Hermes，避免浏览器跨域直连 Hermes API。 */
 export async function checkHermesHealth(): Promise<boolean> {
-  const url = import.meta.env.VITE_HERMES_API_HEALTH_URL || 'http://127.0.0.1:8642/health'
   try {
-    const response = await fetch(url)
-    return response.ok
+    if (isMockEnabled()) {
+      await delay(200)
+      return true
+    }
+    const response = await get<{ reachable: boolean }>('/api/hermes/health')
+    return response.reachable === true
   } catch {
     return false
   }
