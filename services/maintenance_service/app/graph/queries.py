@@ -41,10 +41,19 @@ class KnowledgeGraphService:
         """按故障现象或关键词返回原因、措施、SOP 和安全事项。"""
 
         normalized_keyword = keyword.strip()
-        rows = await self._query(
-            """
+        normalized_model = device_model.strip() if device_model and device_model.strip() else None
+        symptom_query = """
             MATCH (symptom:FaultSymptom)
-            WHERE $keyword = '' OR toLower(symptom.name) CONTAINS toLower($keyword)
+            WHERE ($keyword = '' OR toLower(symptom.name) CONTAINS toLower($keyword))
+              AND (size($symptoms) = 0 OR symptom.name IN $symptoms)
+              AND (
+                $device_model IS NULL
+                OR EXISTS {
+                  MATCH (case2:MaintenanceCase)-[:ADDRESSES]->(symptom)
+                  MATCH (case2)-[:APPLIES_TO]->(model2:DeviceModel)
+                  WHERE model2.name = $device_model
+                }
+              )
             OPTIONAL MATCH (symptom)-[:MAY_BE_CAUSED_BY]->(cause:FaultCause)
             OPTIONAL MATCH (cause)-[:SOLVED_BY]->(action:MaintenanceAction)
             OPTIONAL MATCH (action)-[:REFER_TO]->(sop:SOP)
@@ -56,21 +65,63 @@ class KnowledgeGraphService:
                    collect(DISTINCT notice.name) AS safety_notices
             ORDER BY symptom
             LIMIT $limit
-            """,
-            {"keyword": normalized_keyword, "limit": limit},
+            """
+        query_parameters = {
+            "device_model": normalized_model,
+            "keyword": normalized_keyword,
+            "symptoms": [],
+            "limit": limit,
+        }
+        rows = await self._query(
+            symptom_query,
+            query_parameters,
         )
         cases = await self._query(
             """
             MATCH (case:MaintenanceCase)-[:APPLIES_TO]->(model:DeviceModel)
-            OPTIONAL MATCH (case)-[:ADDRESSES]->(symptom:FaultSymptom)
-            WHERE $device_model IS NULL OR model.name = $device_model
+            MATCH (case)-[:ADDRESSES]->(symptom:FaultSymptom)
+            WHERE ($device_model IS NULL OR model.name = $device_model)
+              AND ($keyword = '' OR toLower(symptom.name) CONTAINS toLower($keyword))
             RETURN case.name AS name, model.name AS device_model,
                    collect(DISTINCT symptom.name) AS symptoms
             ORDER BY case.name
             LIMIT $limit
             """,
-            {"device_model": device_model, "limit": limit},
+            {"device_model": normalized_model, "keyword": normalized_keyword, "limit": limit},
         )
+        if normalized_keyword and normalized_model and not rows and not cases:
+            # Agent 可能会用“空压机故障”这类泛化描述，而图谱只保存具体现象。
+            # 先退化到该型号的历史案例，再用案例关联的具体现象补齐证据链。
+            cases = await self._query(
+                """
+                MATCH (case:MaintenanceCase)-[:APPLIES_TO]->(model:DeviceModel)
+                MATCH (case)-[:ADDRESSES]->(symptom:FaultSymptom)
+                WHERE model.name = $device_model
+                RETURN case.name AS name, model.name AS device_model,
+                       collect(DISTINCT symptom.name) AS symptoms
+                ORDER BY case.name
+                LIMIT $limit
+                """,
+                {"device_model": normalized_model, "limit": limit},
+            )
+            case_symptoms = sorted(
+                {
+                    symptom
+                    for case in cases
+                    for symptom in case.get("symptoms", [])
+                    if symptom
+                }
+            )
+            if case_symptoms:
+                rows = await self._query(
+                    symptom_query,
+                    {
+                        "device_model": normalized_model,
+                        "keyword": "",
+                        "symptoms": case_symptoms,
+                        "limit": limit,
+                    },
+                )
         components = await self._query(
             """
             MATCH (device:Device {code: $device_code})-[:CONTAINS]->(component:Component)
@@ -151,6 +202,18 @@ class KnowledgeGraphService:
                 KnowledgeRelationship(source_id=device_id, target_id=component_id, type="CONTAINS")
             )
 
+        case_evidence = [
+            EvidenceItem(
+                source_type="knowledge_graph",
+                source_id=case.id,
+                title=f"历史案例: {case.name}",
+                reference="MaintenanceCase -> DeviceModel / FaultSymptom",
+                confidence=0.85,
+                details={"device_model": case.device_model, "symptoms": case.symptoms},
+            )
+            for case in case_models
+        ]
+
         return KnowledgeRelatedResult(
             nodes=list(nodes.values()),
             relationships=list({item.model_dump_json(): item for item in relationships}.values()),
@@ -165,7 +228,8 @@ class KnowledgeGraphService:
                     confidence=0.8,
                 )
                 for item in rows
-            ],
+            ]
+            + case_evidence,
         )
 
     async def path(

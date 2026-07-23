@@ -235,3 +235,10 @@ onMounted(loadDetail)
     </template>
   </div>
 </template>
+
+<style scoped>
+:deep(.el-card) { margin-bottom: 16px; }
+:deep(.el-card__header) { border-bottom-color: var(--ui-border); font-size: 13px; font-weight: 600; }
+:deep(.el-descriptions__label.el-descriptions__cell) { color: var(--ui-text-quiet); font: 11px var(--font-mono); }
+:deep(.el-timeline-item__timestamp) { color: var(--ui-text-quiet); font-family: var(--font-mono); }
+</style>

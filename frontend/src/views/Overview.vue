@@ -238,30 +238,35 @@ onMounted(loadSummary)
 <style scoped>
 .stat-cards .stat-card {
   cursor: pointer;
-  transition: transform 0.15s ease;
+  min-height: 132px;
+  border-top: 2px solid var(--ui-border);
+  transition: background .16s ease, border-color .16s ease;
 }
 .stat-cards .stat-card:hover {
-  transform: translateY(-2px);
+  background: var(--ui-panel-raised);
 }
-.stat-card-success:hover { border-color: var(--color-success) !important; }
-.stat-card-warning:hover { border-color: var(--color-warning) !important; }
-.stat-card-danger:hover { border-color: var(--color-danger) !important; }
+.stat-card-success { border-top-color: var(--ui-success); }
+.stat-card-warning { border-top-color: var(--ui-warning); }
+.stat-card-danger { border-top-color: var(--ui-danger); }
 
 .stat-label {
-  font-size: 13px;
-  color: var(--color-text-secondary);
+  font: 11px var(--font-mono);
+  color: var(--ui-text-muted);
+  letter-spacing: .04em;
   margin-bottom: 8px;
 }
 
 .stat-value {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--ui-text);
 }
 
 .workflow-summary {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  font-size: 13px;
 }
 
 .wf-row {
@@ -271,8 +276,17 @@ onMounted(loadSummary)
 }
 
 .wf-label {
-  color: var(--color-text-dim);
+  color: var(--ui-text-quiet);
   min-width: 80px;
   flex-shrink: 0;
+}
+
+:deep(.el-card__header) { padding: 13px 16px; border-bottom-color: var(--ui-border); font-size: 13px; font-weight: 600; }
+:deep(.el-card__body) { padding: 16px; }
+:deep(.el-row + .el-row) { margin-top: 18px !important; }
+
+@media (max-width: 760px) {
+  :deep(.el-col) { margin-bottom: 10px; }
+  .wf-row { align-items: flex-start; }
 }
 </style>

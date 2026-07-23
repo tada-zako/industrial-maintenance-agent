@@ -23,6 +23,21 @@ mcp = FastMCP(
     ),
 )
 
+
+@mcp.prompt(name="repair-draft", description="指导 Agent 安全生成维修方案草案的演示工作流。")
+def repair_draft_prompt() -> str:
+    """提供稳定的草案生成流程，避免 Agent 把无匹配误判为 Neo4j 空库。"""
+
+    return (
+        "维修草案生成流程：先调用 list_devices 确认设备，再调用 get_device_status 和 "
+        "search_problems 获取状态与历史问题。知识查询应优先使用状态中的具体故障现象，"
+        "例如‘温度过高’、‘振动异常’或‘排气压力异常’，不要只使用‘空压机故障’这类泛化描述。"
+        "如果具体关键词没有匹配，使用已确认的 device_model 调用 search_knowledge(keyword='') "
+        "查看该型号的关联案例。search_knowledge 返回空结果只表示当前条件没有匹配，不能直接说明 "
+        "Neo4j 为空。只有设备身份和知识证据都确认后，才能调用 create_repair_draft；"
+        "草案始终需要人工确认。"
+    )
+
 _JSON_DICT_ADAPTER = TypeAdapter(dict[str, Any])
 
 

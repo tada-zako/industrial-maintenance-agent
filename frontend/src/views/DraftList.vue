@@ -126,3 +126,8 @@ onMounted(loadDrafts)
     </template>
   </div>
 </template>
+
+<style scoped>
+:deep(.el-table) { border: 1px solid var(--ui-border); }
+:deep(.el-card__header) { border-bottom-color: var(--ui-border); font: 12px var(--font-mono); }
+</style>

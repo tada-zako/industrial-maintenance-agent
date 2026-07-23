@@ -167,6 +167,10 @@ onMounted(loadDetail)
 </template>
 
 <style scoped>
+.page-container :deep(.el-card) { margin-bottom: 16px; }
+.page-container :deep(.el-card__header) { border-bottom-color: var(--ui-border); font: 12px var(--font-mono); }
+.page-container :deep(.el-timeline-item__tail) { border-left-color: var(--ui-border-strong); }
+.page-container :deep(.el-timeline-item__timestamp) { color: var(--ui-text-quiet); font-family: var(--font-mono); }
 .step-card {
   background: var(--color-bg-primary) !important;
   border: 1px solid var(--color-border) !important;

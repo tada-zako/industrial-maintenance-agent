@@ -218,3 +218,15 @@ onMounted(loadDetail)
     </template>
   </div>
 </template>
+
+<style scoped>
+:deep(.el-card) { margin-bottom: 16px; }
+:deep(.el-descriptions__label.el-descriptions__cell) { color: var(--ui-text-quiet); font: 11px var(--font-mono); }
+:deep(.el-descriptions__content.el-descriptions__cell) { color: var(--ui-text); }
+:deep(.el-tabs__header) { margin-bottom: 16px; }
+:deep(.el-tabs__nav-wrap::after) { background-color: var(--ui-border); }
+:deep(.el-tabs__item) { color: var(--ui-text-muted); }
+:deep(.el-tabs__item.is-active) { color: var(--ui-accent-light); }
+:deep(.el-tabs__active-bar) { background-color: var(--ui-accent); }
+:deep(.el-table) { border: 1px solid var(--ui-border); }
+</style>

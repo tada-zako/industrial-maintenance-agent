@@ -16,7 +16,11 @@ const current = computed(() => statusMap[props.status] || { text: props.status, 
 </script>
 
 <template>
-  <el-tag :type="current.type" size="small">
+  <el-tag :type="current.type" size="small" effect="plain" class="status-tag">
     <span class="status-dot" :class="status" />{{ current.text }}
   </el-tag>
 </template>
+
+<style scoped>
+.status-tag { border-radius: 2px; font-weight: 500; }
+</style>

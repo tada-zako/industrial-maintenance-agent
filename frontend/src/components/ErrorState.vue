@@ -20,6 +20,8 @@ const emit = defineEmits<{
 
 <style scoped>
 .error-state {
-  padding: 60px 0;
+  padding: 32px 0;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-panel);
 }
 </style>

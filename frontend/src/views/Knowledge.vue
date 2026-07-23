@@ -121,7 +121,7 @@ onMounted(loadKnowledge)
     <el-card shadow="never" class="knowledge-filter">
       <el-form inline @submit.prevent="submitSearch">
         <el-form-item label="设备型号">
-          <el-input v-model="deviceModel" clearable placeholder="例如 AC-SCREW-75" @keyup.enter="submitSearch" />
+          <el-input v-model="deviceModel" clearable placeholder="例如 AC-Model-A" @keyup.enter="submitSearch" />
         </el-form-item>
         <el-form-item label="故障关键词">
           <el-input v-model="keyword" clearable placeholder="例如 温度过高" @keyup.enter="submitSearch" />
@@ -209,6 +209,9 @@ onMounted(loadKnowledge)
 </template>
 
 <style scoped>
+.page-container :deep(.el-card) { border-radius: 2px; }
+.page-container :deep(.el-card__header) { border-bottom-color: var(--ui-border); font: 12px var(--font-mono); }
+.page-container :deep(.el-table) { border: 1px solid var(--ui-border); }
 .knowledge-filter { margin-bottom: 16px; }
 .knowledge-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
 .graph-card, .node-card { min-height: 520px; }

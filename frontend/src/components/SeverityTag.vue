@@ -19,5 +19,9 @@ const current = computed(
 </script>
 
 <template>
-  <el-tag :type="current.type" size="small" effect="dark">{{ current.text }}</el-tag>
+  <el-tag :type="current.type" size="small" effect="plain" class="severity-tag">{{ current.text }}</el-tag>
 </template>
+
+<style scoped>
+.severity-tag { min-width: 30px; justify-content: center; border-radius: 2px; font-family: var(--font-mono); font-size: 11px; }
+</style>
