@@ -1,5 +1,6 @@
 """Hermes 可调用的工业空压机运维 FastMCP 工具服务。"""
 
+import json
 from typing import Any
 
 from fastmcp import FastMCP
@@ -18,8 +19,9 @@ mcp = FastMCP(
     name="maintenance-service",
     instructions=(
         "工业空压机运维工具服务。所有建议都是需要人工确认的草案，"
-        "工具绝不执行真实设备控制。应先查询设备、状态、历史问题和知识证据，"
-        "再生成草案并保存工作流。"
+        "工具绝不执行真实设备控制。应先查询设备、状态和历史问题，再尽量查询知识证据。"
+        "知识图谱无匹配时仍可保存带告警的草案，不要改用本地文件、终端命令或自建 MCP 客户端。"
+        "只能调用本服务暴露的维护工具，并在最后记录具体的工具、输入、输出和状态。"
     ),
 )
 
@@ -34,8 +36,10 @@ def repair_draft_prompt() -> str:
         "例如‘温度过高’、‘振动异常’或‘排气压力异常’，不要只使用‘空压机故障’这类泛化描述。"
         "如果具体关键词没有匹配，使用已确认的 device_model 调用 search_knowledge(keyword='') "
         "查看该型号的关联案例。search_knowledge 返回空结果只表示当前条件没有匹配，不能直接说明 "
-        "Neo4j 为空。只有设备身份和知识证据都确认后，才能调用 create_repair_draft；"
-        "草案始终需要人工确认。"
+        "Neo4j 为空。设备身份确认后，即使知识图谱没有该型号，也应使用设备状态、问题记录等 "
+        "已获得证据 "
+        "调用 create_repair_draft；工具会返回告警，草案始终需要人工确认。"
+        "不要创建本地文件、脚本或新的 MCP 工具。"
     )
 
 _JSON_DICT_ADAPTER = TypeAdapter(dict[str, Any])
@@ -67,14 +71,60 @@ def _text_value(value: Any) -> str | None:
     return None if value is None else str(value)
 
 
-def _normalize_workflow_step(step: dict[str, Any]) -> dict[str, Any]:
-    """兼容 Agent 常用的 tool/status/note 字段，并转换为后端工作流契约。"""
+_WORKFLOW_SUMMARY_LIMIT = 4000
+_WORKFLOW_STEP_FIELDS = {
+    "step_name",
+    "name",
+    "tool",
+    "tool_name",
+    "step",
+    "status",
+    "failed",
+    "note",
+    "error_message",
+    "input_summary",
+    "input",
+    "output_summary",
+    "output",
+    "result",
+    "evidence",
+}
 
-    raw_status = step.get("status", "completed")
+
+def _summary_value(value: Any) -> str | None:
+    """将工作流输入输出压缩为可读 JSON，避免字典被保存成无结构的 Python repr。"""
+
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value
+    else:
+        text = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    if len(text) <= _WORKFLOW_SUMMARY_LIMIT:
+        return text
+    return f"{text[:_WORKFLOW_SUMMARY_LIMIT]}…"
+
+
+def _normalize_workflow_step(step: dict[str, Any]) -> dict[str, Any]:
+    """兼容 Agent 的 step/result 格式，并保留具体工具、输入、输出和错误信息。"""
+
+    result_value = step.get("result")
+    result_status = str(result_value).lower() if isinstance(result_value, str) else ""
+    raw_status = step.get("status")
+    if raw_status is None:
+        raw_status = (
+            result_status
+            if result_status in {"failed", "error", "failure", "skipped"}
+            else "completed"
+        )
     status_value = (
         raw_status.value if isinstance(raw_status, WorkflowStepStatus) else str(raw_status).lower()
     )
-    failed = bool(step.get("failed")) or status_value in {"failed", "error", "failure"}
+    failed = bool(step.get("failed")) or status_value in {
+        "failed",
+        "error",
+        "failure",
+    } or result_status in {"failed", "error", "failure"}
     if failed:
         status = WorkflowStepStatus.FAILED
     elif status_value == WorkflowStepStatus.SKIPPED.value:
@@ -84,18 +134,35 @@ def _normalize_workflow_step(step: dict[str, Any]) -> dict[str, Any]:
     else:
         status = WorkflowStepStatus.COMPLETED
 
+    step_name = _text_value(
+        step.get("step_name") or step.get("name") or step.get("tool") or step.get("step")
+    ) or "工具调用"
+    tool_name = _text_value(step.get("tool_name") or step.get("tool") or step.get("step"))
+    explicit_input = step.get("input_summary")
+    if explicit_input is None:
+        explicit_input = step.get("input")
+    if explicit_input is None:
+        input_payload = {
+            key: value for key, value in step.items() if key not in _WORKFLOW_STEP_FIELDS
+        }
+        explicit_input = input_payload or None
+    explicit_output = step.get("output_summary")
+    if explicit_output is None:
+        explicit_output = step.get("output")
+    if explicit_output is None:
+        explicit_output = result_value
     note = _text_value(step.get("note"))
     return {
-        "step_name": _text_value(step.get("step_name") or step.get("name") or step.get("tool"))
-        or "工具调用",
-        "tool_name": _text_value(step.get("tool_name") or step.get("tool")),
+        "step_name": step_name,
+        "tool_name": tool_name,
         "status": status,
         "failed": failed,
-        "input_summary": _text_value(step.get("input_summary") or step.get("input")),
-        "output_summary": _text_value(step.get("output_summary") or step.get("output")),
+        "input_summary": _summary_value(explicit_input),
+        "output_summary": _summary_value(explicit_output),
         "evidence": step.get("evidence") or [],
         "error_message": _text_value(step.get("error_message"))
-        or (note if failed else None),
+        or (note if failed else None)
+        or (_summary_value(result_value) if failed else None),
     }
 
 
@@ -209,7 +276,7 @@ async def create_repair_draft(
     safety_notices: list[str] | None = None,
     evidence: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """保存维修方案草案；设备标识与知识查询均验证成功后才允许创建。"""
+    """保存维修方案草案；设备身份必须确认，知识图谱只作为可选证据来源。"""
 
     default_safety = ["停机、泄压并执行上锁挂牌", "由具备资质的人员复核后再维修"]
     default_inspection = ["核对设备当前状态与历史故障", "确认停机和泄压条件"]
@@ -233,27 +300,23 @@ async def create_repair_draft(
                     "error": "设备已归档，无法生成维修草案。",
                     "data": [],
                 }
+            warnings = ["该维修方案仅为草案，必须由人工确认后执行。"]
+            knowledge = None
             try:
                 knowledge = await KnowledgeGraphService().search(
                     keyword=diagnosis, device_model=device.model, device_code=device.code
                 )
+                if not knowledge.matches and not knowledge.cases:
+                    warnings.append(
+                        "知识图谱未找到该型号的匹配证据，当前草案仅基于已提交的设备、状态或问题信息。"
+                    )
             except GraphUnavailableError:
-                return {
-                    "ok": False,
-                    "status": "needs_input",
-                    "error": "知识图谱查询失败，无法基于足够依据生成草案。",
-                    "data": [],
-                }
-            if not knowledge.matches and not knowledge.cases:
-                return {
-                    "ok": False,
-                    "status": "needs_input",
-                    "error": "未找到匹配的知识证据，请补充故障现象后重试。",
-                    "data": [],
-                }
+                warnings.append("知识图谱当前不可用，当前草案仅基于已提交的设备、状态或问题信息。")
             normalized_evidence = [EvidenceItem(**item) for item in evidence or []]
-            if not normalized_evidence:
+            if not normalized_evidence and knowledge is not None:
                 normalized_evidence = knowledge.evidence
+            if not normalized_evidence:
+                warnings.append("当前草案没有结构化证据，校验时需要补充证据引用。")
             draft = await service.create_draft(
                 MaintenanceDraftCreate(
                     device_id=device_id,
@@ -274,7 +337,8 @@ async def create_repair_draft(
             return {
                 "ok": True,
                 "data": _as_json(draft),
-                "warning": "该维修方案仅为草案，必须由人工确认后执行。",
+                "warning": "；".join(warnings),
+                "warnings": warnings,
             }
     except (DomainError, ValueError) as exc:
         return {"ok": False, "status": "needs_input", "error": str(exc), "data": []}

@@ -88,6 +88,8 @@ services:
       - "127.0.0.1:9119:9119"
     volumes:
       - hermes_data:/opt/data
+      # 用项目内受控 Skill 覆盖持久卷中的旧降级指令，禁止 Agent 写本地维修文件。
+      - ./hermes/skills/industrial-maintenance:/opt/data/skills/mlops/mcp-maintenance:ro
     depends_on:
       maintenance-mcp:
         condition: service_started
