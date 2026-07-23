@@ -10,7 +10,13 @@ async def initialize_knowledge_graph() -> None:
         async with driver.session() as session:
             await session.run(
                 "UNWIND $items AS item MERGE (:DeviceModel {name: item.name})",
-                {"items": [{"name": "AC-SCREW-75"}, {"name": "AC-SCREW-90"}]},
+                {
+                    "items": [
+                        {"name": "AC-Model-A"},
+                        {"name": "AC-Model-B"},
+                        {"name": "AC-Model-C"},
+                    ]
+                },
             )
             await session.run(
                 """
@@ -23,8 +29,12 @@ async def initialize_knowledge_graph() -> None:
                 """,
                 {
                     "items": [
-                        {"code": "AC-001", "name": "一号空压机", "model": "AC-SCREW-75"},
-                        {"code": "AC-002", "name": "二号空压机", "model": "AC-SCREW-90"},
+                        {"code": "AC-001", "name": "一号空压机", "model": "AC-Model-A"},
+                        {"code": "AC-002", "name": "二号空压机", "model": "AC-Model-A"},
+                        {"code": "AC-003", "name": "三号空压机", "model": "AC-Model-B"},
+                        {"code": "AC-004", "name": "四号空压机", "model": "AC-Model-B"},
+                        {"code": "AC-005", "name": "五号空压机", "model": "AC-Model-C"},
+                        {"code": "AC-006", "name": "六号空压机", "model": "AC-Model-C"},
                     ]
                 },
             )
@@ -95,8 +105,8 @@ async def initialize_knowledge_graph() -> None:
                 """,
                 {
                     "items": [
-                        {"name": "夏季高温案例", "model": "AC-SCREW-75", "symptom": "温度过高"},
-                        {"name": "阀门磨损案例", "model": "AC-SCREW-90", "symptom": "排气压力异常"},
+                        {"name": "夏季高温案例", "model": "AC-Model-A", "symptom": "温度过高"},
+                        {"name": "阀门磨损案例", "model": "AC-Model-B", "symptom": "排气压力异常"},
                     ]
                 },
             )

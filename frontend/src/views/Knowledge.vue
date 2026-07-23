@@ -121,7 +121,7 @@ onMounted(loadKnowledge)
     <el-card shadow="never" class="knowledge-filter">
       <el-form inline @submit.prevent="submitSearch">
         <el-form-item label="设备型号">
-          <el-input v-model="deviceModel" clearable placeholder="例如 AC-SCREW-75" @keyup.enter="submitSearch" />
+          <el-input v-model="deviceModel" clearable placeholder="例如 AC-Model-A" @keyup.enter="submitSearch" />
         </el-form-item>
         <el-form-item label="故障关键词">
           <el-input v-model="keyword" clearable placeholder="例如 温度过高" @keyup.enter="submitSearch" />

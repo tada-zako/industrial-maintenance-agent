@@ -690,7 +690,7 @@ export async function fetchKnowledge(params: {
     await delay(250)
     return {
       nodes: [
-        { id: 'DeviceModel:AC-SCREW-75', type: 'DeviceModel', name: params.deviceModel || 'AC-SCREW-75', source: 'ai-mock', properties: {} },
+        { id: `DeviceModel:${params.deviceModel || 'AC-Model-A'}`, type: 'DeviceModel', name: params.deviceModel || 'AC-Model-A', source: 'ai-mock', properties: {} },
         { id: 'FaultSymptom:温度过高', type: 'FaultSymptom', name: '温度过高', source: 'ai-mock', properties: {} },
         { id: 'FaultCause:冷却风扇效率下降', type: 'FaultCause', name: '冷却风扇效率下降', source: 'ai-mock', properties: {} },
         { id: 'MaintenanceAction:检查并清洁冷却风扇', type: 'MaintenanceAction', name: '检查并清洁冷却风扇', source: 'ai-mock', properties: {} },
