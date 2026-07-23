@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
- * Agent 工作流详情页 -- 多工具调用时间线
+ * 工作流详情页 -- 真实步骤顺序、工具调用、证据、耗时、错误
+ * 基于设计稿重构
  */
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -8,167 +9,98 @@ import type { WorkflowRun } from '../types'
 import { fetchWorkflowDetail } from '../api'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorState from '../components/ErrorState.vue'
+import EmptyState from '../components/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
-const runId = computed(() => route.params.runId as string)
-
+const workflowId = computed(() => route.params.workflowId as string)
 const workflow = ref<WorkflowRun | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-const stepStatusColor: Record<string, string> = {
-  pending: '#5a6d7e',
-  in_progress: '#eab308',
-  completed: '#22c55e',
-  failed: '#ef4444',
-  skipped: '#8899aa',
+async function loadWorkflow() {
+  loading.value = true; error.value = null
+  try { workflow.value = await fetchWorkflowDetail(workflowId.value) }
+  catch (e: any) { error.value = e.message || '加载失败' }
+  finally { loading.value = false }
 }
 
-const stepStatusLabel: Record<string, string> = {
-  pending: '等待中',
-  in_progress: '执行中',
-  completed: '已完成',
-  failed: '失败',
-  skipped: '已跳过',
-}
+function goToDraft(id: string) { router.push(`/drafts/${id}`) }
 
-async function loadDetail() {
-  loading.value = true
-  error.value = null
-  try {
-    workflow.value = await fetchWorkflowDetail(runId.value)
-  } catch (e: any) {
-    error.value = e.message || '加载失败'
-  } finally {
-    loading.value = false
-  }
-}
-
-const totalDuration = computed(() => {
-  if (!workflow.value?.started_at || !workflow.value?.finished_at) return '-'
-  const ms = new Date(workflow.value.finished_at).getTime() - new Date(workflow.value.started_at).getTime()
-  const min = Math.floor(ms / 60000)
-  const sec = Math.floor((ms % 60000) / 1000)
-  return `${min}分${sec}秒`
-})
-
-onMounted(loadDetail)
+onMounted(loadWorkflow)
 </script>
 
 <template>
-  <div class="page-container">
-    <div class="page-header">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <el-button text @click="router.back()">
-          <el-icon><svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 12H5M12 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-width="2"/></svg></el-icon>
-          返回
-        </el-button>
-        <h2>Agent 工作流详情</h2>
+  <div>
+    <section class="page-intro">
+      <div>
+        <span class="page-eyebrow">workflow · agent processing</span>
+        <h1 class="page-heading">Agent 工作流详情</h1>
       </div>
-    </div>
+      <div class="page-updated mono">{{ workflowId }}</div>
+    </section>
 
     <LoadingState v-if="loading" />
-    <ErrorState v-else-if="error" :message="error" @retry="loadDetail" />
+    <ErrorState v-else-if="error" :message="error" @retry="loadWorkflow" />
 
     <template v-else-if="workflow">
-      <!-- 工作流概要 -->
-      <el-card shadow="never" style="margin-bottom: 16px;">
-        <el-descriptions :column="2" border size="small">
-          <el-descriptions-item label="运行 ID">
-            <span class="mono" style="color: var(--color-accent)">{{ workflow.id }}</span>
+      <!-- 概要 -->
+      <section class="app-panel mb-4">
+        <header class="app-panel__head"><span class="app-panel__title">运行概要</span><span class="app-panel__code">STATUS: {{ workflow.status }}</span></header>
+        <el-descriptions :column="4" border size="small">
+          <el-descriptions-item label="运行ID"><span class="mono text-[var(--cyan-light)]">{{ workflow.id }}</span></el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <span class="status-tag" :class="{ warning: workflow.status === 'running', fault: workflow.status === 'failed' }"><i></i>{{ workflow.status === 'completed' ? '已完成' : workflow.status === 'running' ? '运行中' : workflow.status === 'failed' ? '失败' : workflow.status }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="运行状态">
-            <el-tag v-if="workflow.status === 'completed'" type="success" size="small">已完成</el-tag>
-            <el-tag v-else-if="workflow.status === 'running'" type="warning" size="small">运行中</el-tag>
-            <el-tag v-else type="danger" size="small">失败</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="目标设备">{{ workflow.device_name || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="总耗时">
-            <span class="mono">{{ totalDuration }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="开始时间">
-            <span class="mono" style="font-size: 12px;">{{ new Date(workflow.started_at).toLocaleString('zh-CN') }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="结束时间">
-            <span class="mono" style="font-size: 12px;">{{ workflow.finished_at ? new Date(workflow.finished_at).toLocaleString('zh-CN') : '-' }}</span>
+          <el-descriptions-item label="关联设备"><span class="text-[var(--white)]">{{ workflow.device_name || workflow.device_id || '-' }}</span></el-descriptions-item>
+          <el-descriptions-item label="总耗时"><span class="mono">{{ workflow.total_duration?.toFixed(1) ?? '—' }} 秒</span></el-descriptions-item>
+          <el-descriptions-item label="工具调用次数"><span class="mono">{{ workflow.steps?.length ?? 0 }} 次</span></el-descriptions-item>
+          <el-descriptions-item label="开始时间" :span="3">
+            <span class="mono text-xs">{{ workflow.started_at ? new Date(workflow.started_at).toLocaleString('zh-CN') : '-' }}</span>
           </el-descriptions-item>
         </el-descriptions>
-      </el-card>
+      </section>
 
       <!-- 用户问题 -->
-      <el-card shadow="never" style="margin-bottom: 16px;">
-        <template #header><span style="font-weight: 600;">用户问题</span></template>
-        <p style="color: var(--color-text-primary); line-height: 1.8; font-size: 14px;">{{ workflow.user_question }}</p>
-      </el-card>
+      <section class="app-panel mb-4" v-if="workflow.user_query">
+        <header class="app-panel__head"><span class="app-panel__title">用户问题</span></header>
+        <div class="p-4 text-sm text-[var(--muted)] bg-[#181818]">「 {{ workflow.user_query }} 」</div>
+      </section>
 
       <!-- 关联草案 -->
-      <div v-if="workflow.draft_id" style="margin-bottom: 16px;">
-        <el-button type="primary" @click="router.push(`/drafts/${workflow.draft_id}`)">
-          查看关联草案 {{ workflow.draft_id }}
-        </el-button>
-      </div>
+      <section class="app-panel mb-4" v-if="workflow.draft_id">
+        <header class="app-panel__head">
+          <span class="app-panel__title">关联草案</span>
+          <button class="app-link" @click="goToDraft(workflow.draft_id)">查看草案 →</button>
+        </header>
+        <div class="p-4"><span class="mono text-sm text-[var(--cyan-light)]">{{ workflow.draft_id }}</span></div>
+      </section>
 
-      <!-- 多工具调用时间线 -->
-      <el-card shadow="never">
-        <template #header><span style="font-weight: 600;">多工具调用时间线（{{ workflow.steps.length }} 步）</span></template>
-        <el-timeline>
-          <el-timeline-item
-            v-for="step in workflow.steps" :key="step.id"
-            :timestamp="step.step_name"
-            placement="top"
-            :color="stepStatusColor[step.step_status] || '#5a6d7e'"
-            size="large"
-          >
-            <el-card shadow="never" class="step-card">
-              <template #header>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-weight: 600;">{{ step.step_name }}</span>
-                    <el-tag
-                      :type="step.step_status === 'completed' ? 'success' : step.step_status === 'failed' ? 'danger' : 'warning'"
-                      size="small"
-                    >
-                      {{ stepStatusLabel[step.step_status] || step.step_status }}
-                    </el-tag>
-                  </div>
-                  <span class="mono" style="font-size: 11px; color: var(--color-text-dim);">
-                    {{ step.started_at ? new Date(step.started_at).toLocaleTimeString('zh-CN') : '-' }}
-                    {{ step.finished_at ? ' - ' + new Date(step.finished_at).toLocaleTimeString('zh-CN') : '' }}
-                  </span>
-                </div>
-              </template>
-
-              <el-descriptions :column="1" size="small" border>
-                <el-descriptions-item v-if="step.tool_name" label="调用工具">
-                  <span class="mono" style="color: var(--color-accent); font-size: 12px;">{{ step.tool_name }}</span>
-                </el-descriptions-item>
-                <el-descriptions-item v-if="step.tool_input_summary" label="输入">
-                  <span style="color: var(--color-text-secondary); font-size: 13px;">{{ step.tool_input_summary }}</span>
-                </el-descriptions-item>
-                <el-descriptions-item v-if="step.tool_output_summary" label="输出">
-                  <span style="color: var(--color-text-secondary); font-size: 13px;">{{ step.tool_output_summary }}</span>
-                </el-descriptions-item>
-                <el-descriptions-item v-if="step.evidence_used?.length" label="引用证据">
-                  <template v-for="(ev, i) in step.evidence_used" :key="i">
-                    <el-tag size="small" style="margin-right: 4px; margin-bottom: 4px;">{{ ev }}</el-tag>
-                  </template>
-                </el-descriptions-item>
-                <el-descriptions-item v-if="step.error_info" label="错误信息">
-                  <span style="color: var(--color-danger); font-size: 13px;">{{ step.error_info }}</span>
-                </el-descriptions-item>
-              </el-descriptions>
-            </el-card>
-          </el-timeline-item>
-        </el-timeline>
-      </el-card>
+      <!-- 工具调用时间线 -->
+      <section class="app-panel">
+        <header class="app-panel__head"><span class="app-panel__title">工具调用时间线</span><span class="app-panel__code">{{ workflow.steps?.length || 0 }} STEPS</span></header>
+        <div class="p-4" v-if="workflow.steps?.length">
+          <el-timeline>
+            <el-timeline-item
+              v-for="(step, index) in workflow.steps"
+              :key="index"
+              :timestamp="`步骤 ${index + 1}`"
+              placement="top"
+              :color="step.status === 'completed' ? 'var(--cyan)' : step.status === 'failed' ? 'var(--red)' : 'var(--line-strong)'"
+            >
+              <div class="text-sm text-[var(--white)] font-medium">{{ step.action || step.title }}</div>
+              <div v-if="step.input_summary" class="text-xs text-[var(--muted)] mt-1 mono">输入: {{ step.input_summary }}</div>
+              <div v-if="step.output_summary" class="text-xs text-[var(--muted)] mt-1 mono">输出: {{ step.output_summary }}</div>
+              <div v-if="step.evidence_refs?.length" class="mt-1">
+                <span v-for="ref in step.evidence_refs" :key="ref" class="text-xs mono text-[var(--cyan-light)] bg-[#181818] px-1.5 py-0.5 mr-1 border border-[var(--line)]">{{ ref }}</span>
+              </div>
+              <div v-if="step.duration !== undefined" class="text-[10px] mono text-[var(--quiet)] mt-1">耗时 {{ step.duration?.toFixed(0) ?? step.duration }} ms</div>
+              <div v-if="step.error" class="text-xs text-[var(--red)] mt-1 mono bg-[#1a1515] px-2 py-1 border border-[var(--line)]">ERROR: {{ step.error }}</div>
+            </el-timeline-item>
+          </el-timeline>
+        </div>
+        <EmptyState v-else description="暂无步骤记录" />
+      </section>
     </template>
   </div>
 </template>
-
-<style scoped>
-.step-card {
-  background: var(--color-bg-primary) !important;
-  border: 1px solid var(--color-border) !important;
-}
-</style>

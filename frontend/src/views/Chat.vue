@@ -1,187 +1,113 @@
 <script setup lang="ts">
 /**
- * Hermes 入口页 -- 跳转 Hermes UI
+ * Hermes 入口页 -- 服务状态、跳转入口、示例问题
+ * 基于设计稿重构
  */
 import { ref, onMounted } from 'vue'
-import { checkHealth, checkHermesHealth } from '../api'
+import { ElMessage } from 'element-plus'
+import { checkHealth } from '../api'
 
 const hermesUrl = import.meta.env.VITE_HERMES_WEB_URL || 'http://127.0.0.1:9119'
 
-const agentStatus = ref<'checking' | 'online' | 'offline'>('checking')
-
-const exampleQuestions = [
-  '空压机 C-2 排气压力骤降、温度升高，帮我分析原因',
-  'A区的空压机有哪些预警信号？',
-  '螺杆空压机振动异常通常是什么原因？',
-  '请帮我生成空压机 A-2 的检修方案',
-  '最近一周有哪些设备出现过故障？',
-]
+const agentOnline = ref<boolean | null>(null)
+const checking = ref(true)
 
 async function checkAgentStatus() {
-  agentStatus.value = 'checking'
-  const [maintenanceOk, hermesOk] = await Promise.all([checkHealth(), checkHermesHealth()])
-  const ok = maintenanceOk && hermesOk
-  agentStatus.value = ok ? 'online' : 'offline'
+  checking.value = true
+  try {
+    const health = await checkHealth()
+    agentOnline.value = health?.status === 'ok' || health?.hermes === 'running'
+  } catch {
+    agentOnline.value = false
+  } finally {
+    checking.value = false
+  }
 }
 
 function openHermes() {
   window.open(hermesUrl, '_blank')
 }
 
-function copyQuestion(q: string) {
-  navigator.clipboard.writeText(q).catch(() => {})
-  openHermes()
+const sampleQuestions = [
+  '空压机 C-2 温度偏高，什么原因？',
+  '如何制定空压机 A-1 的月保养计划？',
+  '显示所有预警设备',
+  '查看最近的维修草案',
+]
+
+function copyAndOpen(question: string) {
+  navigator.clipboard?.writeText(question).catch(() => {})
+  const url = new URL(hermesUrl)
+  url.searchParams.set('q', question)
+  window.open(url.toString(), '_blank')
 }
 
 onMounted(checkAgentStatus)
 </script>
 
 <template>
-  <div class="page-container">
-    <div class="page-header">
-      <h2>Hermes Agent 助手</h2>
-    </div>
-
-    <!-- Agent 状态卡片 -->
-    <el-row :gutter="16" style="margin-bottom: 24px;">
-      <el-col :span="8">
-        <el-card shadow="never" class="agent-card">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="agent-icon">
-              <svg viewBox="0 0 24 24" width="36" height="36"><path fill="var(--color-accent)" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            </div>
-            <div>
-              <h3 style="font-size: 16px; font-weight: 600;">Hermes Agent</h3>
-              <p style="font-size: 13px; color: var(--color-text-secondary);">AI 驱动工业运维智能体</p>
-            </div>
-          </div>
-          <div style="margin-top: 16px; display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 13px; color: var(--color-text-dim);">服务状态：</span>
-            <template v-if="agentStatus === 'checking'">
-              <el-icon class="is-loading" style="color: var(--color-warning);"><svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31.4 31.4" stroke-linecap="round"/></svg></el-icon>
-              <span style="color: var(--color-warning); font-size: 13px;">检测中...</span>
-            </template>
-            <template v-else-if="agentStatus === 'online'">
-              <span class="status-dot normal" />
-              <span style="color: var(--color-success); font-size: 13px;">在线</span>
-            </template>
-            <template v-else>
-              <span class="status-dot fault" />
-              <span style="color: var(--color-danger); font-size: 13px;">离线</span>
-            </template>
-            <el-button text size="small" @click="checkAgentStatus" style="margin-left: auto;">重新检测</el-button>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="never" class="agent-card">
-          <div class="agent-feature">
-            <h4>多工具调用</h4>
-            <p>Agent 可调用设备查询、故障检索、知识图谱、资料检索、草案生成、校验等多个 MCP 工具</p>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="never" class="agent-card">
-          <div class="agent-feature">
-            <h4>知识图谱增强</h4>
-            <p>基于 Neo4j 知识图谱，关联设备、故障、措施、案例，提供可追溯的推理证据</p>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 跳转按钮；对话和 Provider 配置均复用 Hermes Dashboard。 -->
-    <el-card shadow="never" style="margin-bottom: 24px; text-align: center; padding: 32px 0;">
-      <h3 style="margin-bottom: 12px; font-size: 18px;">进入 Hermes 对话页面</h3>
-      <p style="color: var(--color-text-secondary); margin-bottom: 24px; font-size: 14px;">
-        在专用对话界面中与 Agent 交互，获取设备诊断、故障分析和维修建议
-      </p>
-      <div style="display: flex; justify-content: center; gap: 12px;">
-        <el-button type="primary" size="large" @click="openHermes" :disabled="agentStatus === 'offline'">
-          打开 Hermes UI
-        </el-button>
-        <el-button size="large" @click="openHermes" :disabled="agentStatus === 'offline'">
-          配置 Provider API
-        </el-button>
+  <div>
+    <section class="page-intro">
+      <div>
+        <span class="page-eyebrow">hermes · ai assistant</span>
+        <h1 class="page-heading">Hermes 助手</h1>
       </div>
-      <p v-if="agentStatus === 'offline'" style="color: var(--color-danger); margin-top: 12px; font-size: 13px;">
-        Agent 服务离线，请检查 Hermes 是否已启动（端口 {{ hermesUrl.split(':').pop() }}）
-      </p>
-      <p v-else style="color: var(--color-text-dim); margin-top: 12px; font-size: 13px;">
-        Provider、模型和 API Key 请在 Hermes Dashboard 中配置，本项目不重复保存密钥。
-      </p>
-    </el-card>
+      <div class="page-updated mono">BUILD 1.0.0</div>
+    </section>
 
-    <!-- 示例问题 -->
-    <el-card shadow="never">
-      <template #header><span style="font-weight: 600;">示例问题</span></template>
-      <p style="color: var(--color-text-dim); font-size: 13px; margin-bottom: 12px;">
-        点击以下问题可复制到剪贴板并打开 Hermes 对话页面：
-      </p>
-      <div class="example-questions">
-        <div
-          v-for="(q, idx) in exampleQuestions" :key="idx"
-          class="example-item" @click="copyQuestion(q)"
-        >
-          <span class="mono" style="font-size: 12px; color: var(--color-text-dim); margin-right: 8px;">#{{ idx + 1 }}</span>
-          <span>{{ q }}</span>
-          <el-icon style="margin-left: auto; color: var(--color-text-dim);">
-            <svg viewBox="0 0 24 24" width="16" height="16"><rect x="9" y="9" width="13" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-          </el-icon>
+    <!-- 服务状态 -->
+    <section class="app-panel mb-4">
+      <header class="app-panel__head"><span class="app-panel__title">Agent 服务状态</span></header>
+      <div class="p-4">
+        <div class="flex items-center gap-3">
+          <span v-if="checking" class="inline-block w-4 h-4 border-2 border-[var(--cyan)] border-t-transparent rounded-full animate-spin"></span>
+          <span v-else>
+            <span class="status-tag" :class="{ fault: !agentOnline }"><i></i></span>
+          </span>
+          <span class="text-sm" :class="checking ? 'text-[var(--muted)]' : agentOnline ? 'text-[var(--white)]' : 'text-[var(--red)]'">
+            {{ checking ? '检测中...' : agentOnline ? '服务状态正常' : '服务不可用' }}
+          </span>
+          <button v-if="!checking && !agentOnline" class="app-link text-xs" @click="checkAgentStatus">重新检测</button>
+        </div>
+        <div v-if="!checking && agentOnline" class="mt-4">
+          <button class="primary-button" @click="openHermes">打开 Hermes UI</button>
         </div>
       </div>
-    </el-card>
+    </section>
+
+    <!-- 功能介绍 -->
+    <section class="app-panel mb-4">
+      <header class="app-panel__head"><span class="app-panel__title">功能介绍</span></header>
+      <div class="p-4 grid grid-cols-2 gap-4">
+        <div class="p-3 border border-[var(--line)] bg-[#181818]">
+          <h3 class="text-sm text-[var(--white)] font-medium mb-1">多工具调用</h3>
+          <p class="text-xs text-[var(--muted)]">Agent 可自动选择并调用设备检测、问题搜索、知识图谱查询等工具。</p>
+        </div>
+        <div class="p-3 border border-[var(--line)] bg-[#181818]">
+          <h3 class="text-sm text-[var(--white)] font-medium mb-1">知识图谱增强</h3>
+          <p class="text-xs text-[var(--muted)]">基于历史维修案例和设备关系，提供精准的故障判断和维修建议。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 示例问题 -->
+    <section class="app-panel">
+      <header class="app-panel__head"><span class="app-panel__title">示例问题</span><span class="app-panel__code">可直接跳转 Hermes 提问</span></header>
+      <div class="p-4 space-y-2">
+        <div
+          v-for="(q, i) in sampleQuestions" :key="i"
+          class="flex items-center justify-between p-3 border border-[var(--line)] bg-[#181818] cursor-pointer hover:bg-[var(--panel-raised)] transition-colors group"
+          @click="copyAndOpen(q)"
+        >
+          <span class="text-sm text-[var(--muted)] group-hover:text-[var(--white)]">{{ q }}</span>
+          <span class="text-xs mono text-[var(--quiet)] group-hover:text-[var(--cyan-light)]">跳转 →</span>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.agent-card {
-  height: 100%;
-  min-height: 140px;
-}
-
-.agent-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  background: rgba(56, 189, 248, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.agent-feature h4 {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.agent-feature p {
-  font-size: 13px;
-  color: var(--color-text-secondary);
-  line-height: 1.6;
-}
-
-.example-questions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.example-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
-  background: var(--color-bg-secondary);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-size: 14px;
-}
-
-.example-item:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-accent);
-}
+.primary-button { height:32px; padding:0 14px; border:1px solid var(--cyan); color:#d9f2ef; background:#21423f; font-size:12px; cursor:pointer; }
+.primary-button:hover { background:#295550; }
 </style>

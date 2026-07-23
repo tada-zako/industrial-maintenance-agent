@@ -1,23 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { ProblemSeverity } from '../types'
-
-const props = defineProps<{
-  severity: ProblemSeverity | string
-}>()
-
-const severityMap: Record<string, { text: string; type: '' | 'success' | 'warning' | 'danger' | 'info' }> = {
-  low: { text: '低', type: 'info' },
-  medium: { text: '中', type: 'warning' },
-  high: { text: '高', type: 'danger' },
-  critical: { text: '严重', type: 'danger' },
-}
-
-const current = computed(
-  () => severityMap[props.severity] || { text: props.severity, type: '' as const }
-)
+/**
+ * 严重程度标签 -- 色点 + 等宽大写文字
+ */
+defineProps<{ severity: string }>()
 </script>
 
 <template>
-  <el-tag :type="current.type" size="small" effect="dark">{{ current.text }}</el-tag>
+  <span class="severity-tag" :class="severity">
+    <template v-if="severity === 'critical'">CRITICAL</template>
+    <template v-else-if="severity === 'high'">HIGH</template>
+    <template v-else-if="severity === 'medium'">MEDIUM</template>
+    <template v-else-if="severity === 'low'">LOW</template>
+    <template v-else>{{ severity }}</template>
+  </span>
 </template>

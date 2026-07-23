@@ -1,18 +1,39 @@
 <script setup lang="ts">
+/**
+ * 应用级布局 -- 侧栏 + 顶栏 + 主内容区
+ * 基于设计稿 design-prototype.html 重构
+ */
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
 
-/** 侧边导航菜单项 */
-const menuItems = [
-  { path: '/overview', label: '运维总览', icon: 'Odometer' },
-  { path: '/devices', label: '设备管理', icon: 'Monitor' },
-  { path: '/problems', label: '问题中心', icon: 'Warning' },
-  { path: '/drafts', label: '维修草案', icon: 'Document' },
-  { path: '/materials', label: '运维资料', icon: 'Folder' },
-  { path: '/knowledge', label: '知识图谱', icon: 'Share' },
-  { path: '/chat', label: 'Hermes 助手', icon: 'ChatDotRound' },
+/** 导航分组 */
+const navGroups = [
+  {
+    caption: '工作台',
+    items: [
+      { path: '/overview', label: '运维总览', code: '01',
+        icon: 'M4 20V10m8 10V4m8 16v-7' },
+      { path: '/devices', label: '设备管理', code: '02',
+        icon: 'rect:3,4,18,13|M9 21h6m-3-4v4' },
+      { path: '/problems', label: '问题中心', code: '03',
+        icon: 'M12 3 2.5 20h19L12 3Z|M12 9v5m0 3h.01' },
+      { path: '/drafts', label: '维修草案', code: '04',
+        icon: 'M6 3h9l4 4v14H6z|M15 3v5h5M9 13h6m-6 4h6' },
+    ],
+  },
+  {
+    caption: '资料与协作',
+    items: [
+      { path: '/materials', label: '运维资料', code: '05',
+        icon: 'M3 7h7l2 2h9v10H3z' },
+      { path: '/knowledge', label: '知识图谱', code: '06',
+        icon: 'circle:6,12,2.4|circle:18,6,2.4|circle:18,18,2.4|M8.1 10.8l7.7-3.6m-7.7 6l7.7 3.6' },
+      { path: '/chat', label: 'Hermes 助手', code: '07',
+        icon: 'M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v9Z' },
+    ],
+  },
 ]
 
 function navigate(path: string) {
@@ -23,142 +44,315 @@ function isActive(path: string): boolean {
   if (path === '/overview') return route.path === '/overview'
   return route.path.startsWith(path)
 }
+
+/** 面包屑映射 */
+const breadcrumbMap: Record<string, string> = {
+  '/overview': '运维总览',
+  '/devices': '设备管理',
+  '/problems': '问题中心',
+  '/drafts': '维修草案',
+  '/materials': '运维资料',
+  '/knowledge': '知识图谱',
+  '/chat': 'Hermes 助手',
+}
+
+/** 当前页面路径文字 */
+function currentPageLabel(): string {
+  for (const [prefix, label] of Object.entries(breadcrumbMap)) {
+    if (route.path.startsWith(prefix)) return label
+  }
+  return '概览'
+}
 </script>
 
 <template>
-  <div class="app-layout">
-    <!-- 侧边栏 -->
+  <div class="shell">
+    <!-- ======== 侧边栏 ======== -->
     <aside class="sidebar">
-      <div class="sidebar-brand">
-        <div class="brand-icon">
-          <svg viewBox="0 0 24 24" width="28" height="28"><path fill="var(--color-accent)" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <!-- 品牌区 -->
+      <div class="brand">
+        <div class="brand-top">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="m12 3 7 4-7 4-7-4 7-4Z"/><path d="m5 13 7 4 7-4M5 17l7 4 7-4"/>
+            </svg>
+          </div>
+          <span class="brand-title">工业运维 Agent</span>
         </div>
-        <div class="brand-text">
-          <h1>工业运维 Agent</h1>
-          <span>Maintenance Dashboard</span>
-        </div>
+        <div class="brand-subtitle">maintenance console</div>
       </div>
-      <nav class="sidebar-nav">
-        <div
-          v-for="item in menuItems"
+
+      <!-- 导航分组 -->
+      <nav class="nav" aria-label="主导航" v-for="group in navGroups" :key="group.caption">
+        <span class="nav-caption">{{ group.caption }}</span>
+        <button
+          v-for="item in group.items"
           :key="item.path"
           class="nav-item"
           :class="{ active: isActive(item.path) }"
           @click="navigate(item.path)"
         >
-          <el-icon :size="18">
-            <svg v-if="item.icon === 'Odometer'" viewBox="0 0 24 24" width="18" height="18"><rect x="2" y="13" width="4" height="9" rx="1" fill="currentColor"/><rect x="10" y="7" width="4" height="15" rx="1" fill="currentColor"/><rect x="18" y="2" width="4" height="20" rx="1" fill="currentColor"/></svg>
-            <svg v-else-if="item.icon === 'Monitor'" viewBox="0 0 24 24" width="18" height="18"><rect x="2" y="3" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-            <svg v-else-if="item.icon === 'Warning'" viewBox="0 0 24 24" width="18" height="18"><path d="M12 2L1 21h22L12 2zm0 4.5l7.5 12h-15l7.5-12z" fill="currentColor"/><circle cx="12" cy="16" r="1.5" fill="var(--color-bg-secondary)"/><rect x="11" y="9" width="2" height="5" rx="0.5" fill="var(--color-bg-secondary)"/></svg>
-            <svg v-else-if="item.icon === 'Document'" viewBox="0 0 24 24" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 2v6h6" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" stroke-width="2"/><line x1="8" y1="17" x2="16" y2="17" stroke="currentColor" stroke-width="2"/></svg>
-            <svg v-else-if="item.icon === 'Folder'" viewBox="0 0 24 24" width="18" height="18"><path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 9h18" stroke="currentColor" stroke-width="2"/></svg>
-            <svg v-else-if="item.icon === 'Share'" viewBox="0 0 24 24" width="18" height="18"><circle cx="6" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="m8.6 10.5 6.8-3M8.6 13.5l6.8 3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-            <svg v-else-if="item.icon === 'ChatDotRound'" viewBox="0 0 24 24" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="1.5" fill="currentColor"/></svg>
-          </el-icon>
-          <span>{{ item.label }}</span>
-        </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+            <template v-if="item.icon.startsWith('rect:')">
+              <rect :x="item.icon.split('|')[0].split(':')[1].split(',')[0]" :y="item.icon.split('|')[0].split(':')[1].split(',')[1]" :width="item.icon.split('|')[0].split(':')[1].split(',')[2]" :height="item.icon.split('|')[0].split(':')[1].split(',')[3]"/>
+              <path v-if="item.icon.includes('|')" :d="item.icon.split('|')[1]"/>
+            </template>
+            <template v-else-if="item.icon.startsWith('circle:')">
+              <circle v-for="(c, ci) in item.icon.split('|').filter(p => p.startsWith('circle:'))" :key="ci" :cx="c.split(':')[1].split(',')[0]" :cy="c.split(':')[1].split(',')[1]" :r="c.split(':')[1].split(',')[2]"/>
+              <path v-if="item.icon.split('|').some(p => p.startsWith('M'))" :d="item.icon.split('|').find(p => p.startsWith('M'))"/>
+            </template>
+            <template v-else>
+              <path :d="item.icon"/>
+            </template>
+          </svg>
+          {{ item.label }}
+          <span class="nav-code">{{ item.code }}</span>
+        </button>
       </nav>
-      <div class="sidebar-footer">
-        <span class="mono">v1.0.0</span>
+
+      <!-- 服务状态 -->
+      <div class="rail-status">
+        <div class="status-line"><i class="status-dot"></i>服务状态正常</div>
+        <div class="build">BUILD 1.0.0 · LOCAL</div>
       </div>
     </aside>
 
-    <!-- 主内容区 -->
-    <main class="main-content">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-    </main>
+    <!-- ======== 主内容区 ======== -->
+    <div class="main">
+      <!-- 顶栏 -->
+      <header class="topbar">
+        <div class="breadcrumb">
+          工作台 <span> / </span> <b>{{ currentPageLabel() }}</b>
+        </div>
+        <div class="top-meta">
+          <span>数据源：MOCK / SQLITE</span>
+          <span class="dot">●</span>
+          <span>LAST SYNC 10:32:18</span>
+        </div>
+      </header>
+
+      <!-- 内容 -->
+      <div class="content-area">
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.app-layout {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
+/* === 整体布局 === */
+.shell {
+  display: grid;
+  grid-template-columns: 238px minmax(0, 1fr);
+  min-height: 100vh;
 }
 
-/* 侧边栏 */
+/* === 侧边栏 === */
 .sidebar {
-  width: 220px;
-  min-width: 220px;
-  background: var(--color-bg-secondary);
-  border-right: 1px solid var(--color-border);
+  background: var(--ink);
+  border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
+  padding: 20px 12px 14px;
   user-select: none;
 }
 
-.sidebar-brand {
-  padding: 20px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid var(--color-border);
+.brand {
+  padding: 0 8px 22px;
+  border-bottom: 1px solid var(--line);
 }
 
-.brand-icon {
+.brand-top {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--cyan);
+  display: grid;
+  place-items: center;
+  color: var(--cyan-light);
   flex-shrink: 0;
 }
 
-.brand-text h1 {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  line-height: 1.3;
+.brand-mark svg {
+  width: 17px;
+  height: 17px;
 }
 
-.brand-text span {
-  font-size: 11px;
-  color: var(--color-text-dim);
-  letter-spacing: 0.5px;
+.brand-title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
 }
 
-.sidebar-nav {
-  flex: 1;
-  padding: 12px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.brand-subtitle {
+  margin: 4px 0 0 42px;
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* 导航 */
+.nav {
+  padding-top: 14px;
+  display: grid;
+  gap: 3px;
+}
+
+.nav-caption {
+  color: var(--quiet);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 0 8px 7px;
+  margin-top: 2px;
 }
 
 .nav-item {
+  width: 100%;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-size: 14px;
+  gap: 11px;
+  min-height: 39px;
+  padding: 0 10px;
+  text-align: left;
+  transition: background 0.16s, color 0.16s, border-color 0.16s;
+  font-size: 13px;
+}
+
+.nav-item svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
 }
 
 .nav-item:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text-primary);
+  background: #1e1e1e;
+  color: var(--white);
 }
 
 .nav-item.active {
-  background: rgba(56, 189, 248, 0.1);
-  color: var(--color-accent);
-  font-weight: 600;
+  border-left-color: var(--cyan);
+  background: #1d2524;
+  color: var(--white);
 }
 
-.sidebar-footer {
-  padding: 12px 16px;
-  border-top: 1px solid var(--color-border);
-  font-size: 11px;
-  color: var(--color-text-dim);
+.nav-item.active .nav-code {
+  color: var(--cyan-light);
 }
 
-/* 主内容区 */
-.main-content {
+.nav-code {
+  color: var(--quiet);
+  font: 10px var(--font-mono);
+  margin-left: auto;
+}
+
+/* 服务状态 */
+.rail-status {
+  margin-top: auto;
+  padding: 16px 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(101, 169, 132, 0.08);
+}
+
+.build {
+  margin-top: 10px;
+  color: var(--quiet);
+  font: 10px var(--font-mono);
+}
+
+/* === 主区 === */
+.main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶栏 */
+.topbar {
+  height: 62px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--content-x);
+  flex-shrink: 0;
+}
+
+.breadcrumb {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.breadcrumb span {
+  color: var(--quiet);
+}
+
+.breadcrumb b {
+  color: var(--white);
+  font-weight: 500;
+}
+
+.top-meta {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: var(--quiet);
+  font: 11px var(--font-mono);
+}
+
+.top-meta .dot {
+  color: var(--cyan);
+}
+
+/* 内容区填满剩余空间 */
+.content-area {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+}
+
+/* 响应式 */
+@media (max-width: 760px) {
+  .shell {
+    display: block;
+  }
+  .sidebar {
+    display: none;
+  }
+  .topbar {
+    height: 52px;
+  }
+  .top-meta {
+    display: none;
+  }
 }
 </style>

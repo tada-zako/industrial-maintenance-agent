@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /**
  * 设备列表页 -- 筛选、分页、新增/修改/归档
+ * 基于设计稿重构
  */
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { Device, DeviceFormData, DeviceStatus } from '../types'
+import type { Device, DeviceFormData } from '../types'
 import { fetchDevices, createDevice, updateDevice, archiveDevice } from '../api'
 import StatusTag from '../components/StatusTag.vue'
 import LoadingState from '../components/LoadingState.vue'
@@ -15,19 +16,16 @@ import EmptyState from '../components/EmptyState.vue'
 const router = useRouter()
 const route = useRoute()
 
-// -- 列表状态 --
 const devices = ref<Device[]>([])
 const total = ref(0)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-// -- 筛选 --
 const searchKeyword = ref('')
 const statusFilter = ref('')
 const currentPage = ref(1)
 const pageSize = 10
 
-// -- 新建/编辑弹窗 --
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增设备')
 const editingId = ref<string | null>(null)
@@ -37,7 +35,6 @@ const formData = ref<DeviceFormData>({
 })
 const formLoading = ref(false)
 
-// -- 加载数据 --
 async function loadDevices() {
   loading.value = true
   error.value = null
@@ -57,30 +54,14 @@ async function loadDevices() {
   }
 }
 
-// -- 筛选变更 --
-function onSearch() {
-  currentPage.value = 1
-  loadDevices()
-}
+function onSearch() { currentPage.value = 1; loadDevices() }
+function onStatusFilterChange() { currentPage.value = 1; loadDevices() }
+function onPageChange(page: number) { currentPage.value = page; loadDevices() }
 
-function onStatusFilterChange() {
-  currentPage.value = 1
-  loadDevices()
-}
-
-function onPageChange(page: number) {
-  currentPage.value = page
-  loadDevices()
-}
-
-// -- CRUD --
 function openCreateDialog() {
   dialogTitle.value = '新增设备'
   editingId.value = null
-  formData.value = {
-    name: '', model: '', area: '', status: 'normal',
-    rated_pressure: 0.8, rated_power: 75, commissioned_at: '',
-  }
+  formData.value = { name: '', model: '', area: '', status: 'normal', rated_pressure: 0.8, rated_power: 75, commissioned_at: '' }
   dialogVisible.value = true
 }
 
@@ -124,110 +105,121 @@ async function handleArchive(device: Device) {
     await archiveDevice(device.id)
     ElMessage.success('设备已停用')
     loadDevices()
-  } catch {
-    // 取消操作
-  }
+  } catch { /* 取消 */ }
 }
 
-function goToDetail(id: string) {
-  router.push(`/devices/${id}`)
-}
+function goToDetail(id: string) { router.push(`/devices/${id}`) }
 
-// -- 初始化 --
 onMounted(() => {
-  if (route.query.status) {
-    statusFilter.value = route.query.status as string
-  }
+  if (route.query.status) { statusFilter.value = route.query.status as string }
   loadDevices()
 })
 </script>
 
 <template>
-  <div class="page-container">
-    <div class="page-header">
-      <h2>设备管理</h2>
-      <el-button type="primary" @click="openCreateDialog">新增设备</el-button>
-    </div>
-
-    <!-- 筛选栏 -->
-    <div class="filter-bar">
-      <el-input
-        v-model="searchKeyword" placeholder="搜索名称/编号" clearable
-        style="width: 220px;" @keyup.enter="onSearch" @clear="onSearch"
-      />
-      <el-select v-model="statusFilter" placeholder="设备状态" clearable style="width: 140px;" @change="onStatusFilterChange">
-        <el-option label="正常" value="normal" />
-        <el-option label="预警" value="warning" />
-        <el-option label="故障" value="fault" />
-      </el-select>
-      <el-button @click="onSearch">查询</el-button>
-    </div>
-
-    <!-- 数据表格 -->
-    <LoadingState v-if="loading" />
-    <ErrorState v-else-if="error" :message="error" @retry="loadDevices" />
-    <template v-else>
-      <el-table v-if="devices.length" :data="devices" stripe size="small" style="width: 100%">
-        <el-table-column label="设备编号" min-width="110">
-          <template #default="{ row }"><span class="mono" style="color: var(--color-accent); cursor: pointer;" @click="goToDetail(row.id)">{{ row.id }}</span></template>
-        </el-table-column>
-        <el-table-column prop="name" label="设备名称" min-width="140" />
-        <el-table-column prop="model" label="型号" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="area" label="所属区域" min-width="140" />
-        <el-table-column label="状态" min-width="90">
-          <template #default="{ row }"><StatusTag :status="row.status" /></template>
-        </el-table-column>
-        <el-table-column label="排气压力(MPa)" min-width="130">
-          <template #default="{ row }">
-            <span class="mono" :class="{ 'status-fault': row.status === 'fault' }">
-              {{ row.running_indicators?.exhaust_pressure?.toFixed(2) ?? '-' }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="温度(°C)" min-width="100">
-          <template #default="{ row }">
-            <span class="mono" :class="{ 'status-fault': row.status === 'fault', 'status-warning': row.status === 'warning' }">
-              {{ row.running_indicators?.temperature ?? '-' }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="振动(mm/s)" min-width="110">
-          <template #default="{ row }">
-            <span class="mono" :class="{ 'status-fault': row.status === 'fault', 'status-warning': row.status === 'warning' }">
-              {{ row.running_indicators?.vibration?.toFixed(1) ?? '-' }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="更新时间" min-width="170">
-          <template #default="{ row }">
-            <span class="mono" style="font-size: 12px; color: var(--color-text-dim);">
-              {{ new Date(row.updated_at).toLocaleString('zh-CN') }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" min-width="180" fixed="right">
-          <template #default="{ row }">
-            <el-button text type="primary" size="small" @click="goToDetail(row.id)">详情</el-button>
-            <el-button text type="primary" size="small" @click="openEditDialog(row)">编辑</el-button>
-            <el-button text type="danger" size="small" @click="handleArchive(row)">停用</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <EmptyState v-else description="暂无设备数据" />
-
-      <!-- 分页 -->
-      <div style="margin-top: 16px; display: flex; justify-content: flex-end;" v-if="total > pageSize">
-        <el-pagination
-          background layout="total, prev, pager, next"
-          :total="total" :page-size="pageSize"
-          v-model:current-page="currentPage" @current-change="onPageChange"
-        />
+  <div>
+    <!-- 页面头部 -->
+    <section class="page-intro">
+      <div>
+        <span class="page-eyebrow">devices · equipment ledger</span>
+        <h1 class="page-heading">设备管理</h1>
       </div>
-    </template>
+      <div class="page-updated">{{ new Date().toLocaleDateString('zh-CN') }} · {{ devices.length }} 台设备</div>
+    </section>
+
+    <!-- 设备面板（含筛选栏 + 表格） -->
+    <section class="app-panel">
+      <header class="app-panel__head">
+        <span class="app-panel__title">设备台账</span>
+        <span class="app-panel__code">{{ total }} RECORDS</span>
+      </header>
+
+      <!-- 筛选栏 -->
+      <div class="filter-bar">
+        <input
+          v-model="searchKeyword" placeholder="搜索设备名称、编号或型号" class="search-input"
+          @keyup.enter="onSearch"
+        />
+        <button class="filter-button" @click="onStatusFilterChange">全部状态</button>
+        <el-select v-model="statusFilter" placeholder="设备状态" clearable
+          style="width: 130px;" @change="onStatusFilterChange">
+          <el-option label="正常" value="normal" />
+          <el-option label="预警" value="warning" />
+          <el-option label="故障" value="fault" />
+        </el-select>
+        <button class="primary-button ml-auto" @click="openCreateDialog">＋ 新增设备</button>
+      </div>
+
+      <!-- 数据表格 -->
+      <LoadingState v-if="loading" />
+      <ErrorState v-else-if="error" :message="error" @retry="loadDevices" />
+      <template v-else>
+        <el-table v-if="devices.length" :data="devices" stripe size="small">
+          <el-table-column label="设备编号" min-width="110">
+            <template #default="{ row }">
+              <span class="mono id-link" @click="goToDetail(row.id)">{{ row.id }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="设备名称" min-width="150">
+            <template #default="{ row }"><span class="name">{{ row.name }}</span></template>
+          </el-table-column>
+          <el-table-column prop="model" label="型号" min-width="180" show-overflow-tooltip />
+          <el-table-column prop="area" label="所属区域" min-width="140" />
+          <el-table-column label="运行状态" min-width="90">
+            <template #default="{ row }"><StatusTag :status="row.status" /></template>
+          </el-table-column>
+          <el-table-column label="排气压力" min-width="130">
+            <template #default="{ row }">
+              <span class="mono metric-num" :class="{ 'value-red': row.status === 'fault' }">
+                {{ row.running_indicators?.exhaust_pressure?.toFixed(2) ?? '-' }} MPa
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="温度" min-width="100">
+            <template #default="{ row }">
+              <span class="mono metric-num" :class="{ 'value-amber': row.status === 'warning', 'value-red': row.status === 'fault' }">
+                {{ row.running_indicators?.temperature ?? '-' }} °C
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="振动" min-width="100">
+            <template #default="{ row }">
+              <span class="mono metric-num" :class="{ 'value-amber': row.status === 'warning', 'value-red': row.status === 'fault' }">
+                {{ row.running_indicators?.vibration?.toFixed(1) ?? '-' }} mm/s
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="更新时间" min-width="170">
+            <template #default="{ row }">
+              <span class="mono text-xs text-[var(--quiet)]">
+                {{ new Date(row.updated_at).toLocaleString('zh-CN') }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" min-width="150" fixed="right">
+            <template #default="{ row }">
+              <button class="table-action" @click="goToDetail(row.id)">详情</button>
+              <button class="table-action secondary" @click="openEditDialog(row)">编辑</button>
+              <button class="table-action secondary" style="color: var(--red)" @click="handleArchive(row)">停用</button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <EmptyState v-else description="暂无设备数据，可点击「新增设备」添加" />
+
+        <!-- 分页 -->
+        <div class="flex justify-end p-4 border-t border-[var(--line)]" v-if="total > pageSize">
+          <el-pagination
+            background layout="total, prev, pager, next"
+            :total="total" :page-size="pageSize"
+            v-model:current-page="currentPage" @current-change="onPageChange"
+          />
+        </div>
+      </template>
+    </section>
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="520px" destroy-on-close>
-      <el-form :model="formData" label-width="110px" label-position="left">
+      <el-form :model="formData" label-width="100px" label-position="left">
         <el-form-item label="设备名称" required>
           <el-input v-model="formData.name" placeholder="如：空压机 A-1" />
         </el-form-item>
@@ -238,20 +230,20 @@ onMounted(() => {
           <el-input v-model="formData.area" placeholder="如：A区-冲压车间" />
         </el-form-item>
         <el-form-item label="设备状态" required>
-          <el-select v-model="formData.status" style="width: 100%;">
+          <el-select v-model="formData.status" style="width: 100%">
             <el-option label="正常" value="normal" />
             <el-option label="预警" value="warning" />
             <el-option label="故障" value="fault" />
           </el-select>
         </el-form-item>
         <el-form-item label="额定压力(MPa)">
-          <el-input-number v-model="formData.rated_pressure" :min="0" :step="0.1" :precision="2" style="width: 100%;" />
+          <el-input-number v-model="formData.rated_pressure" :min="0" :step="0.1" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="额定功率(kW)">
-          <el-input-number v-model="formData.rated_power" :min="0" :step="1" style="width: 100%;" />
+          <el-input-number v-model="formData.rated_power" :min="0" :step="1" style="width: 100%" />
         </el-form-item>
         <el-form-item label="投用日期">
-          <el-date-picker v-model="formData.commissioned_at" type="date" placeholder="选择日期" style="width: 100%;" value-format="YYYY-MM-DD" />
+          <el-date-picker v-model="formData.commissioned_at" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -261,3 +253,82 @@ onMounted(() => {
     </el-dialog>
   </div>
 </template>
+
+<style scoped>
+.search-input {
+  height: 32px;
+  min-width: 218px;
+  padding: 0 10px;
+  color: var(--white);
+  background: #121212;
+  border: 1px solid var(--line);
+  outline: none;
+  font-size: 13px;
+}
+
+.search-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(79,168,161,.12);
+}
+
+.filter-button {
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.filter-button:hover {
+  border-color: var(--muted);
+  color: var(--white);
+}
+
+.primary-button {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--cyan);
+  color: #d9f2ef;
+  background: #21423f;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.primary-button:hover {
+  background: #295550;
+}
+
+/* 表格内联样式类 */
+.id-link {
+  color: var(--cyan-light);
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+.id-link:hover { color: var(--white); }
+
+.name { color: var(--white); font-weight: 500; }
+
+.metric-num { color: var(--white); font-family: var(--font-mono); font-size: 12px; }
+
+.value-red { color: var(--red); }
+.value-amber { color: var(--amber); }
+
+.table-action {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--cyan-light);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.table-action.secondary {
+  color: var(--muted);
+  margin-left: 13px;
+}
+
+.table-action:hover { color: var(--white); }
+</style>

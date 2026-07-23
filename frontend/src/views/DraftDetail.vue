@@ -1,237 +1,164 @@
 <script setup lang="ts">
 /**
- * 维修草案详情页 -- 故障判断、检查/维修步骤、安全事项、知识图谱证据、关联工作流
+ * 维修草案详情页 -- 故障判断、时间线、安全注意事项、知识图谱证据
+ * 基于设计稿重构
  */
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import type { MaintenanceDraft } from '../types'
-import { fetchDraftDetail, isMockEnabled, updateDraftStatus } from '../api'
+import { fetchDraftDetail } from '../api'
 import SeverityTag from '../components/SeverityTag.vue'
 import LoadingState from '../components/LoadingState.vue'
 import ErrorState from '../components/ErrorState.vue'
+import EmptyState from '../components/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
 const draftId = computed(() => route.params.draftId as string)
-
 const draft = ref<MaintenanceDraft | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
-const reviewFeedback = ref('')
-
-const workflowId = computed(() => {
-  if (!draft.value) return undefined
-  if (draft.value.workflow_run_id) return draft.value.workflow_run_id
-  // 仅保留旧 Mock 数据的演示映射；真实后端始终使用 workflow_run_id。
-  if (!isMockEnabled()) return undefined
-  return draft.value.id === 'draft-002' ? 'wf-002' : 'wf-001'
-})
 
 async function loadDetail() {
-  loading.value = true
-  error.value = null
-  try {
-    draft.value = await fetchDraftDetail(draftId.value)
-    reviewFeedback.value = draft.value.review_feedback || ''
-  } catch (e: any) {
-    error.value = e.message || '加载失败'
-  } finally {
-    loading.value = false
-  }
+  loading.value = true; error.value = null
+  try { draft.value = await fetchDraftDetail(draftId.value) }
+  catch (e: any) { error.value = e.message || '加载失败' }
+  finally { loading.value = false }
 }
 
-async function handleStatusChange(status: string) {
-  if (!draft.value) return
-  try {
-    draft.value = await updateDraftStatus(draft.value.id, status, reviewFeedback.value || undefined)
-    ElMessage.success(
-      status === 'confirmed' ? '草案已确认' : status === 'rejected' ? '草案已驳回' : '草案已归档',
-    )
-  } catch (e: any) {
-    ElMessage.error(e.message || '操作失败')
-  }
-}
-
-// 从 draft 查找关联工作流
-function goToWorkflow() {
-  if (workflowId.value) router.push(`/workflows/${workflowId.value}`)
-}
+function goToWorkflow(id: string) { router.push(`/workflows/${id}`) }
+function goToDevice(id: string) { router.push(`/devices/${id}`) }
 
 onMounted(loadDetail)
 </script>
 
 <template>
-  <div class="page-container">
-    <div class="page-header">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <el-button text @click="router.push('/drafts')">
-          <el-icon><svg viewBox="0 0 24 24" width="16" height="16"><path d="M19 12H5M12 19l-7-7 7-7" fill="none" stroke="currentColor" stroke-width="2"/></svg></el-icon>
-          返回列表
-        </el-button>
-        <h2>草案详情</h2>
+  <div>
+    <section class="page-intro">
+      <div>
+        <span class="page-eyebrow">draft · detail</span>
+        <div class="flex items-center gap-3">
+          <button class="app-link text-xs" @click="router.push('/drafts')">← 返回列表</button>
+          <h1 class="page-heading">{{ draft?.fault_diagnosis || '草案详情' }}</h1>
+        </div>
       </div>
-      <div style="display: flex; gap: 8px;">
-        <el-button v-if="draft?.status === 'pending_review'" type="success" @click="handleStatusChange('confirmed')">确认草案</el-button>
-        <el-button v-if="draft?.status === 'pending_review'" type="danger" plain @click="handleStatusChange('rejected')">驳回草案</el-button>
-        <el-button v-if="draft?.status !== 'archived'" @click="handleStatusChange('archived')">归档</el-button>
-      </div>
-    </div>
+      <div class="page-updated mono">{{ draftId }} · {{ draft ? new Date(draft.generated_at).toLocaleString('zh-CN') : '' }}</div>
+    </section>
 
     <LoadingState v-if="loading" />
     <ErrorState v-else-if="error" :message="error" @retry="loadDetail" />
 
     <template v-else-if="draft">
       <!-- 头部信息 -->
-      <el-card shadow="never" style="margin-bottom: 16px;">
+      <section class="app-panel mb-4">
+        <header class="app-panel__head">
+          <span class="app-panel__title">草案信息</span>
+          <span class="app-panel__code">{{ draft.status === 'pending_review' ? 'PENDING_REVIEW' : draft.status === 'confirmed' ? 'CONFIRMED' : 'ARCHIVED' }}</span>
+        </header>
         <el-descriptions :column="3" border size="small">
-          <el-descriptions-item label="草案编号">
-            <span class="mono" style="color: var(--color-accent)">{{ draft.id }}</span>
+          <el-descriptions-item label="关联设备">
+            <span class="text-[var(--white)] cursor-pointer mono" @click="goToDevice(draft.device_id)">{{ draft.device_name || draft.device_id }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="关联设备">{{ draft.device_name }}</el-descriptions-item>
           <el-descriptions-item label="风险等级"><SeverityTag :severity="draft.risk_level" /></el-descriptions-item>
-          <el-descriptions-item label="草案状态">
+          <el-descriptions-item label="状态">
             <el-tag v-if="draft.status === 'pending_review'" type="warning" size="small">待确认</el-tag>
             <el-tag v-else-if="draft.status === 'confirmed'" type="success" size="small">已确认</el-tag>
-            <el-tag v-else-if="draft.status === 'rejected'" type="danger" size="small">已驳回</el-tag>
             <el-tag v-else type="info" size="small">已归档</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="需人工确认">
-            <el-tag :type="draft.needs_confirmation ? 'warning' : 'success'" size="small">
-              {{ draft.needs_confirmation ? '是' : '否' }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="生成时间">
-            <span class="mono" style="font-size: 12px;">{{ new Date(draft.generated_at).toLocaleString('zh-CN') }}</span>
+          <el-descriptions-item label="故障判断" :span="3">
+            <span class="text-[var(--white)]">{{ draft.fault_diagnosis }}</span>
           </el-descriptions-item>
         </el-descriptions>
-      </el-card>
+      </section>
 
-      <el-card shadow="never" style="margin-bottom: 16px;">
-        <template #header><span style="font-weight: 600;">审核反馈</span></template>
-        <el-input
-          v-if="draft.status === 'pending_review'"
-          v-model="reviewFeedback"
-          type="textarea"
-          :rows="3"
-          maxlength="1000"
-          show-word-limit
-          placeholder="可填写确认或驳回该草案的简短意见"
-        />
-        <template v-else>
-          <p v-if="draft.review_feedback" style="color: var(--color-text-secondary);">{{ draft.review_feedback }}</p>
-          <el-empty v-else description="未填写审核意见" :image-size="48" />
-          <p v-if="draft.reviewed_at" class="mono" style="margin-top: 8px; color: var(--color-text-dim); font-size: 12px;">
-            审核时间：{{ new Date(draft.reviewed_at).toLocaleString('zh-CN') }}
-          </p>
-        </template>
-      </el-card>
+      <!-- 可能原因 -->
+      <section class="app-panel mb-4" v-if="draft.possible_causes?.length">
+        <header class="app-panel__head"><span class="app-panel__title">可能原因</span></header>
+        <div class="p-4">
+          <ul class="list-disc list-inside text-sm text-[var(--muted)] space-y-1">
+            <li v-for="(cause, i) in draft.possible_causes" :key="i">{{ cause }}</li>
+          </ul>
+        </div>
+      </section>
 
-      <!-- 故障判断 -->
-      <el-card shadow="never" style="margin-bottom: 16px;">
-        <template #header><span style="font-weight: 600;">故障判断</span></template>
-        <p style="color: var(--color-text-primary); line-height: 1.8; font-size: 14px;">{{ draft.fault_diagnosis }}</p>
-      </el-card>
+      <!-- 检查/维修步骤时间线 -->
+      <section class="app-panel mb-4" v-if="draft.inspection_steps?.length || draft.repair_steps?.length">
+        <header class="app-panel__head"><span class="app-panel__title">检查与维修步骤</span></header>
+        <div class="p-4">
+          <el-timeline v-if="draft.inspection_steps?.length">
+            <el-timeline-item
+              v-for="(step, i) in draft.inspection_steps"
+              :key="'ins-'+i"
+              :timestamp="`检查步骤 ${i + 1}`"
+              placement="top"
+              :color="'var(--cyan)'"
+            >
+              <div class="text-sm text-[var(--white)]">{{ step.description }}</div>
+              <div v-if="step.expected || step.result" class="text-xs text-[var(--muted)] mt-1">
+                <template v-if="step.expected">预期: {{ step.expected }}</template>
+                <template v-if="step.result"> / 结果: {{ step.result }}</template>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+          <el-timeline v-if="draft.repair_steps?.length" style="margin-top: 8px">
+            <el-timeline-item
+              v-for="(step, i) in draft.repair_steps"
+              :key="'rep-'+i"
+              :timestamp="`维修步骤 ${i + 1}`"
+              placement="top"
+              :color="'var(--amber)'"
+            >
+              <div class="text-sm text-[var(--white)]">{{ step.description }}</div>
+            </el-timeline-item>
+          </el-timeline>
+        </div>
+      </section>
 
-      <el-row :gutter="16">
-        <!-- 可能原因 -->
-        <el-col :span="12">
-          <el-card shadow="never" style="margin-bottom: 16px; height: 100%;">
-            <template #header><span style="font-weight: 600;">可能原因</span></template>
-            <ol style="padding-left: 20px; color: var(--color-text-secondary); line-height: 2;">
-              <li v-for="(cause, idx) in draft.possible_causes" :key="idx">{{ cause }}</li>
-            </ol>
-          </el-card>
-        </el-col>
-
-        <!-- 工具和备件 -->
-        <el-col :span="12">
-          <el-card shadow="never" style="margin-bottom: 16px; height: 100%;">
-            <template #header><span style="font-weight: 600;">所需工具和备件</span></template>
-            <ul style="padding-left: 20px; color: var(--color-text-secondary); line-height: 2;">
-              <li v-for="(item, idx) in draft.tools_and_parts" :key="idx">{{ item }}</li>
-            </ul>
-          </el-card>
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="16">
-        <!-- 检查步骤 -->
-        <el-col :span="12">
-          <el-card shadow="never" style="margin-bottom: 16px;">
-            <template #header><span style="font-weight: 600;">检查步骤</span></template>
-            <el-timeline>
-              <el-timeline-item
-                v-for="(step, idx) in draft.check_steps" :key="'c'+idx"
-                :timestamp="`步骤 ${idx + 1}`" placement="top"
-                color="var(--color-info)"
-              >
-                <p style="color: var(--color-text-secondary); font-size: 13px;">{{ step }}</p>
-              </el-timeline-item>
-            </el-timeline>
-          </el-card>
-        </el-col>
-
-        <!-- 维修步骤 -->
-        <el-col :span="12">
-          <el-card shadow="never" style="margin-bottom: 16px;">
-            <template #header><span style="font-weight: 600;">维修步骤</span></template>
-            <el-timeline>
-              <el-timeline-item
-                v-for="(step, idx) in draft.repair_steps" :key="'r'+idx"
-                :timestamp="`步骤 ${idx + 1}`" placement="top"
-                color="var(--color-warning)"
-              >
-                <p style="color: var(--color-text-secondary); font-size: 13px;">{{ step }}</p>
-              </el-timeline-item>
-            </el-timeline>
-          </el-card>
-        </el-col>
-      </el-row>
+      <!-- 工具备件 -->
+      <section class="app-panel mb-4" v-if="draft.tools_parts?.length">
+        <header class="app-panel__head"><span class="app-panel__title">工具与备件</span></header>
+        <div class="p-4">
+          <div class="flex flex-wrap gap-2">
+            <span v-for="tp in draft.tools_parts" :key="tp" class="px-2 py-1 text-xs border border-[var(--line)] text-[var(--muted)] bg-[#121212]">{{ tp }}</span>
+          </div>
+        </div>
+      </section>
 
       <!-- 安全注意事项 -->
-      <el-card shadow="never" style="margin-bottom: 16px;">
-        <template #header><span style="font-weight: 600; color: var(--color-danger);">安全注意事项</span></template>
-        <ul style="padding-left: 20px; color: var(--color-text-secondary); line-height: 2.2;">
-          <li v-for="(safety, idx) in draft.safety_notices" :key="idx">{{ safety }}</li>
-        </ul>
-      </el-card>
+      <section class="app-panel mb-4" v-if="draft.safety_notes?.length">
+        <header class="app-panel__head"><span class="app-panel__title">安全注意事项</span></header>
+        <div class="p-4">
+          <div v-for="(note, i) in draft.safety_notes" :key="i" class="flex gap-2 mb-2 last:mb-0">
+            <span class="text-[var(--amber)] text-sm font-bold mt-0.5">!</span>
+            <span class="text-sm text-[var(--muted)]">{{ note }}</span>
+          </div>
+        </div>
+      </section>
 
       <!-- 知识图谱证据 -->
-      <el-card shadow="never" style="margin-bottom: 16px;">
-        <template #header><span style="font-weight: 600;">知识图谱证据引用</span></template>
-        <el-table v-if="draft.evidence_refs.length" :data="draft.evidence_refs" stripe size="small">
-          <el-table-column label="类型" width="100">
-            <template #default="{ row }">
-              <el-tag v-if="row.type === 'case'" type="success" size="small">案例</el-tag>
-              <el-tag v-else-if="row.type === 'sop'" type="warning" size="small">SOP</el-tag>
-              <el-tag v-else-if="row.type === 'safety'" type="danger" size="small">安全</el-tag>
-              <el-tag v-else type="info" size="small">资料</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="label" label="名称" min-width="200" />
-          <el-table-column label="关系" width="150">
-            <template #default="{ row }">
-              <span class="mono" style="font-size: 12px; color: var(--color-accent)">{{ row.relationship }}</span>
-            </template>
-          </el-table-column>
+      <section class="app-panel mb-4" v-if="draft.evidence_refs?.length">
+        <header class="app-panel__head">
+          <span class="app-panel__title">知识图谱证据</span>
+          <span class="app-panel__code">{{ draft.evidence_refs.length }} EVIDENCES</span>
+        </header>
+        <el-table :data="draft.evidence_refs" size="small" class="w-full">
+          <el-table-column prop="source_node" label="来源节点" min-width="140" />
+          <el-table-column prop="target_node" label="目标节点" min-width="140" />
+          <el-table-column prop="relationship" label="关系" min-width="160" />
+          <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
         </el-table>
-        <el-empty v-else description="无证据引用" :image-size="60" />
-      </el-card>
+      </section>
 
       <!-- 关联工作流 -->
-      <el-card shadow="never">
-        <template #header>
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: 600;">关联工作流</span>
-            <el-button v-if="workflowId" text type="primary" size="small" @click="goToWorkflow">查看工作流详情</el-button>
-          </div>
-        </template>
-        <p style="color: var(--color-text-secondary); font-size: 13px;">
-          <template v-if="workflowId">该维修草案由 Agent 工作流自动生成，点击上方按钮可查看完整的多工具调用时间线。</template>
-          <template v-else>当前草案没有关联工作流记录，可能来自手工录入或旧版演示数据。</template>
-        </p>
-      </el-card>
+      <section class="app-panel" v-if="draft.workflow_id">
+        <header class="app-panel__head">
+          <span class="app-panel__title">关联工作流</span>
+          <button class="app-link" @click="goToWorkflow(draft.workflow_id)">查看完整流程 →</button>
+        </header>
+        <div class="p-4">
+          <span class="mono text-sm text-[var(--cyan-light)]">{{ draft.workflow_id }}</span>
+        </div>
+      </section>
     </template>
   </div>
 </template>

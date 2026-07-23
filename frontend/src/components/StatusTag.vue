@@ -1,22 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { DeviceStatus } from '../types'
-
-const props = defineProps<{
-  status: DeviceStatus | string
-}>()
-
-const statusMap: Record<string, { text: string; type: '' | 'success' | 'warning' | 'danger' }> = {
-  normal: { text: '正常', type: 'success' },
-  warning: { text: '预警', type: 'warning' },
-  fault: { text: '故障', type: 'danger' },
-}
-
-const current = computed(() => statusMap[props.status] || { text: props.status, type: '' as const })
+/**
+ * 设备状态标签 -- 色点 + 中文状态文字
+ */
+defineProps<{ status: string }>()
 </script>
 
 <template>
-  <el-tag :type="current.type" size="small">
-    <span class="status-dot" :class="status" />{{ current.text }}
-  </el-tag>
+  <span class="status-tag" :class="{ warning: status === 'warning', fault: status === 'fault' }">
+    <i></i>
+    <template v-if="status === 'normal'">正常</template>
+    <template v-else-if="status === 'warning'">预警</template>
+    <template v-else-if="status === 'fault'">故障</template>
+    <template v-else>{{ status }}</template>
+  </span>
 </template>
