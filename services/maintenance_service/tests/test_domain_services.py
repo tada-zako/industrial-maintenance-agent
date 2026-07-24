@@ -138,6 +138,7 @@ async def test_shared_service_covers_core_write_and_query_flow() -> None:
                 step_name="查询设备状态",
                 tool_name="get_device_status",
                 status=WorkflowStepStatus.COMPLETED,
+                evidence=["设备状态查询结果"],
             )
             finished = await service.workflow.finish_run(
                 run,
@@ -150,6 +151,8 @@ async def test_shared_service_covers_core_write_and_query_flow() -> None:
             assert finished.status is WorkflowStatus.COMPLETED
             assert loaded_run.draft_id == draft.id
             assert len(loaded_run.steps) == 1
+            assert loaded_run.steps[0].evidence[0]["source_type"] == "workflow"
+            assert loaded_run.steps[0].evidence[0]["title"] == "设备状态查询结果"
 
             archived = await service.archive_device(device.id)
             assert archived.is_archived is True

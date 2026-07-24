@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db.models import WorkflowRun, WorkflowStep, utc_now
 from ..db.repositories import WorkflowRepository
 from ..domain.enums import WorkflowStatus, WorkflowStepStatus
+from ..schemas.common import normalize_evidence_items
 
 
 class WorkflowService:
@@ -58,7 +59,7 @@ class WorkflowService:
                 "status": status,
                 "input_summary": input_summary,
                 "output_summary": output_summary,
-                "evidence": list(evidence or []),
+                "evidence": normalize_evidence_items(evidence),
                 "error_message": error_message,
                 "started_at": started_at or utc_now(),
                 "finished_at": finished_at or utc_now(),
@@ -94,7 +95,12 @@ class WorkflowService:
     async def get_run(self, run_id: int) -> WorkflowRun | None:
         """查询工作流及其步骤。"""
 
-        return await self.repository.get_run(run_id)
+        run = await self.repository.get_run(run_id)
+        if run is not None:
+            # 兼容早期 Agent 将证据直接写成字符串的工作流记录。
+            for step in run.steps:
+                step.evidence = normalize_evidence_items(step.evidence)
+        return run
 
     async def get_latest_run(self) -> WorkflowRun | None:
         """查询最近一次工作流摘要。"""
