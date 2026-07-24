@@ -67,6 +67,35 @@ def _text_value(value: Any) -> str | None:
     return None if value is None else str(value)
 
 
+def _normalize_workflow_evidence(value: Any) -> list[dict[str, Any]]:
+    """将 Agent 证据转换为可由工作流详情接口返回的结构。"""
+
+    if value is None:
+        return []
+
+    items = value if isinstance(value, list) else [value]
+    normalized: list[dict[str, Any]] = []
+    for item in items:
+        if isinstance(item, dict):
+            try:
+                normalized.append(EvidenceItem.model_validate(item).model_dump(mode="json"))
+                continue
+            except ValueError:
+                excerpt = str(item)
+        else:
+            excerpt = _text_value(item)
+
+        if excerpt:
+            normalized.append(
+                EvidenceItem(
+                    source_type="agent_log",
+                    title="Agent 工具调用摘要",
+                    excerpt=excerpt,
+                ).model_dump(mode="json")
+            )
+    return normalized
+
+
 def _normalize_workflow_step(step: dict[str, Any]) -> dict[str, Any]:
     """兼容 Agent 常用的 tool/status/note 字段，并转换为后端工作流契约。"""
 
@@ -93,7 +122,7 @@ def _normalize_workflow_step(step: dict[str, Any]) -> dict[str, Any]:
         "failed": failed,
         "input_summary": _text_value(step.get("input_summary") or step.get("input")),
         "output_summary": _text_value(step.get("output_summary") or step.get("output")),
-        "evidence": step.get("evidence") or [],
+        "evidence": _normalize_workflow_evidence(step.get("evidence")),
         "error_message": _text_value(step.get("error_message"))
         or (note if failed else None),
     }

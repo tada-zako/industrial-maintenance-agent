@@ -48,6 +48,26 @@ def test_normalize_workflow_step_accepts_agent_aliases() -> None:
     assert step["error_message"] == "Neo4j 不可用"
 
 
+def test_normalize_workflow_step_wraps_text_evidence() -> None:
+    """文本 Agent 日志在工作流响应中仍应保持结构化。"""
+
+    step = _normalize_workflow_step(
+        {"tool": "search_knowledge", "evidence": "Neo4j is temporarily unavailable."}
+    )
+
+    assert step["evidence"] == [
+        {
+            "source_type": "agent_log",
+            "source_id": None,
+            "title": "Agent 工具调用摘要",
+            "reference": None,
+            "excerpt": "Neo4j is temporarily unavailable.",
+            "confidence": None,
+            "details": {},
+        }
+    ]
+
+
 def test_device_identity_gate_rejects_guessed_device_identifiers() -> None:
     """设备编号、名称或型号不一致时必须停止生成草案。"""
 
