@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVICE_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
@@ -41,14 +40,6 @@ class Settings(BaseSettings):
     mcp_host: str = "0.0.0.0"
     mcp_port: int = 8001
     mcp_path: str = "/mcp"
-    cors_origins: list[str] = Field(
-        default_factory=lambda: [
-            "http://127.0.0.1:3000",
-            "http://localhost:3000",
-            "http://127.0.0.1:5173",
-            "http://localhost:5173",
-        ]
-    )
 
 
 settings = Settings()

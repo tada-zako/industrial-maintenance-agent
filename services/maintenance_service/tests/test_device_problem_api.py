@@ -185,3 +185,36 @@ async def test_problem_api_supports_filter_write_status_and_archive() -> None:
 
         response = await client.get("/api/problems/99999")
         assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_cors_is_open_for_preflight_success_and_error_responses() -> None:
+    """演示环境允许任意来源访问，并覆盖预检和错误响应。"""
+
+    origin = "http://unlisted-demo-origin.example"
+    async with api_client() as client:
+        response = await client.get(
+            "/api/health",
+            headers={"Origin": origin},
+        )
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "*"
+
+        response = await client.options(
+            "/api/workflows/8",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "*"
+        assert "GET" in response.headers["access-control-allow-methods"]
+
+        response = await client.get(
+            "/api/workflows/99999",
+            headers={"Origin": origin},
+        )
+        assert response.status_code == 404
+        assert response.headers["access-control-allow-origin"] == "*"

@@ -17,6 +17,7 @@ from services.maintenance_service.app.mcp_server import (
     _normalize_workflow_step,
     create_repair_draft,
 )
+from services.maintenance_service.app.schemas.common import normalize_evidence_items
 from services.maintenance_service.app.schemas.knowledge import KnowledgeRelatedResult
 
 
@@ -68,6 +69,36 @@ def test_normalize_workflow_step_preserves_flat_agent_input_and_result() -> None
     assert step["input_summary"] == '{"device_id": 6}'
     assert step["output_summary"] == "ok"
     assert step["status"] is WorkflowStepStatus.COMPLETED
+
+
+def test_normalize_workflow_step_converts_legacy_text_evidence() -> None:
+    """Agent 传入文本证据时，工作流响应仍保持结构化契约。"""
+
+    step = _normalize_workflow_step(
+        {"tool": "get_device_status", "evidence": ["设备状态：fault"]}
+    )
+
+    assert step["evidence"] == [
+        {
+            "source_type": "workflow",
+            "source_id": None,
+            "title": "设备状态：fault",
+            "reference": None,
+            "excerpt": "设备状态：fault",
+            "confidence": None,
+            "details": {},
+        }
+    ]
+
+
+def test_normalize_evidence_items_preserves_valid_items_and_wraps_legacy_dicts() -> None:
+    """旧版字典证据即使字段不完整，也不会再导致接口响应校验失败。"""
+
+    evidence = normalize_evidence_items([{"label": "旧版证据", "raw": "value"}])
+
+    assert evidence[0]["source_type"] == "workflow"
+    assert evidence[0]["title"] == "旧版证据"
+    assert evidence[0]["details"]["legacy_value"]["raw"] == "value"
 
 
 @pytest.mark.asyncio

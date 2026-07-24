@@ -12,7 +12,7 @@ from .db.session import session_context
 from .domain.enums import DraftStatus, WorkflowStatus, WorkflowStepStatus
 from .domain.services import DomainError, MaintenanceService
 from .graph.queries import GraphUnavailableError, KnowledgeGraphService
-from .schemas.common import EvidenceItem
+from .schemas.common import EvidenceItem, normalize_evidence_items
 from .schemas.drafts import MaintenanceDraftCreate
 
 mcp = FastMCP(
@@ -159,7 +159,7 @@ def _normalize_workflow_step(step: dict[str, Any]) -> dict[str, Any]:
         "failed": failed,
         "input_summary": _summary_value(explicit_input),
         "output_summary": _summary_value(explicit_output),
-        "evidence": step.get("evidence") or [],
+        "evidence": normalize_evidence_items(step.get("evidence")),
         "error_message": _text_value(step.get("error_message"))
         or (note if failed else None)
         or (_summary_value(result_value) if failed else None),

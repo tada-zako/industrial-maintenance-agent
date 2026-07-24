@@ -46,13 +46,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     register_exception_handlers(application)
-    application.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.cors_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
     application.include_router(health_router, prefix="/api")
     application.include_router(devices_router, prefix="/api")
     application.include_router(problems_router, prefix="/api")
@@ -61,7 +54,20 @@ def create_app() -> FastAPI:
     application.include_router(dashboard_router, prefix="/api")
     application.include_router(workflows_router, prefix="/api")
     application.include_router(knowledge_router, prefix="/api")
-    return application
+    # FastAPI 默认的 ServerErrorMiddleware 位于用户中间件之外。再包一层 CORS，
+    # 确保 500 等未处理异常响应也带上 Access-Control-Allow-Origin。
+    cors_application = CORSMiddleware(
+        application,
+        # 本项目仅用于本地演示，浏览器入口不依赖 Cookie 或跨域凭据。
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+    # 保留测试和本地集成所需的 FastAPI 依赖覆盖入口。
+    cors_application.dependency_overrides = application.dependency_overrides
+    return cors_application  # type: ignore[return-value]
 
 
 app = create_app()
